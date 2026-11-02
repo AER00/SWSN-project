@@ -20,6 +20,21 @@ eda:
 probe:
 	$(PY) -m swsn.probe --protocol evaluation/protocol.yaml
 
+# Full grid: 5 matchers x 5 levels x every pair with transcribed ground truth.
+# Writes evaluation/results_attribution.csv and results_cumulative.csv.
+bench:
+	$(PY) -m swsn.run_benchmark --protocol evaluation/protocol.yaml
+
+figures: bench
+	$(PY) -m swsn.figures
+
+# G1-G5 gate over the admitted datasets -> evaluation/triage.json
+triage:
+	$(PY) -m swsn.triage
+
+notebooks:
+	$(PY) notebooks/_build.py
+
 test:
 	uv run pytest
 

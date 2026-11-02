@@ -1,0 +1,20 @@
+table_a,col_a,table_b,col_b,label,stratum,annotator,note
+olist_customers_dataset,customer_zip_code_prefix,olist_geolocation_dataset,geolocation_zip_code_prefix,1,S2,schema,shared zip-prefix domain; documented in prose; geolocation is 1:n per prefix
+olist_customers_dataset,customer_city,olist_geolocation_dataset,geolocation_city,1,S2,schema,"same city vocabulary, unaccented lowercase on both sides"
+olist_customers_dataset,customer_state,olist_geolocation_dataset,geolocation_state,1,S2,schema,two-letter Brazilian UF code
+olist_customers_dataset,customer_zip_code_prefix,olist_sellers_dataset,seller_zip_code_prefix,1,S2,schema,no foreign key; both are Brazilian zip prefixes
+olist_customers_dataset,customer_city,olist_sellers_dataset,seller_city,1,S2,schema,no foreign key; shared city vocabulary
+olist_customers_dataset,customer_state,olist_sellers_dataset,seller_state,1,S2,schema,no foreign key; shared UF vocabulary
+olist_orders_dataset,customer_id,olist_customers_dataset,customer_id,1,S1,schema,
+olist_order_items_dataset,order_id,olist_orders_dataset,order_id,1,S1,schema,
+olist_order_items_dataset,product_id,olist_products_dataset,product_id,1,S1,schema,
+olist_order_items_dataset,seller_id,olist_sellers_dataset,seller_id,1,S1,schema,
+olist_order_payments_dataset,order_id,olist_orders_dataset,order_id,1,S1,schema,
+olist_order_reviews_dataset,order_id,olist_orders_dataset,order_id,1,S1,schema,
+olist_products_dataset,product_category_name,product_category_name_translation,product_category_name,1,S1,schema,the translation table's own join key
+olist_products_dataset,product_category_name,product_category_name_translation,product_category_name_english,1,S3,schema,"same concept, Portuguese vs English wording; name_sim high, value_sim ~0"
+olist_orders_dataset,customer_id,olist_customers_dataset,customer_unique_id,0,S4,schema,"same 32-hex shape; customer_id is order-scoped, customer_unique_id is the person"
+olist_orders_dataset,order_id,olist_order_reviews_dataset,review_id,0,S4,schema,"both 32-hex primary-key-shaped identifiers, unrelated values"
+olist_order_items_dataset,order_item_id,olist_order_payments_dataset,payment_sequential,0,S4,schema,both small per-order ordinals starting at 1
+olist_order_items_dataset,price,olist_order_payments_dataset,payment_value,0,S4,schema,"both BRL amounts at order grain, but items and payments are different rows"
+olist_order_reviews_dataset,review_creation_date,olist_orders_dataset,order_delivered_customer_date,0,S4,schema,both timestamps; review creation is not delivery

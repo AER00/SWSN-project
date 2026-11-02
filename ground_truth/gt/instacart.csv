@@ -1,0 +1,12 @@
+table_a,col_a,table_b,col_b,label,stratum,annotator,note
+order_products__prior,order_id,orders,order_id,1,S1,schema,
+order_products__prior,product_id,products,product_id,1,S1,schema,
+order_products__prior,order_id,order_products__train,order_id,1,S1,schema,"same schema, disjoint orders — a name-says-yes / values-say-no control"
+order_products__prior,product_id,order_products__train,product_id,1,S1,schema,same product vocabulary across the two partitions
+order_products__train,order_id,orders,order_id,1,S1,schema,
+order_products__train,product_id,products,product_id,1,S1,schema,
+products,aisle_id,aisles,aisle_id,1,S1,schema,
+products,department_id,departments,department_id,1,S1,schema,
+order_products__prior,add_to_cart_order,orders,order_number,0,S4,schema,both small per-order ordinals starting at 1; position in cart is not order sequence
+products,department_id,aisles,aisle_id,0,S4,schema,both dense integer id columns from different levels of the same hierarchy
+orders,user_id,products,product_id,0,S4,schema,both integer identifier columns; ranges overlap enough to trip a value matcher

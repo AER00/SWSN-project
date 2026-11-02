@@ -83,6 +83,7 @@ class TablePair:
     b: TableRef
     pair_type: PairType
     rationale: str
+    join_key: tuple[str, str] | None = None
 
     def __post_init__(self) -> None:
         if not self.rationale.strip():
@@ -102,6 +103,9 @@ class Registry:
 
     def admitted(self) -> dict[str, Dataset]:
         return {k: v for k, v in self.datasets.items() if v.admitted}
+
+    def pairs_for(self, dataset_id: str) -> list[TablePair]:
+        return [p for p in self.pairs if dataset_id in (p.a.dataset, p.b.dataset)]
 
     def by_domain(self) -> dict[str, list[Dataset]]:
         out: dict[str, list[Dataset]] = {}
@@ -149,6 +153,7 @@ def _parse_pair(raw: dict[str, Any]) -> TablePair:
         b=TableRef(**raw["b"]),
         pair_type=PairType(raw.get("pair_type", "p_natural")),
         rationale=raw.get("rationale", ""),
+        join_key=tuple(raw["join_key"]) if raw.get("join_key") else None,
     )
 
 

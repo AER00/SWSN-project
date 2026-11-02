@@ -1,0 +1,82 @@
+[
+  {
+    "summary": {
+      "dataset": "olist",
+      "admitted": true,
+      "failed_gates": [],
+      "dimensions": [
+        "D3",
+        "D5",
+        "D7"
+      ],
+      "n_correspondences": 14
+    },
+    "gates": [
+      {
+        "gate": "G1",
+        "passed": true,
+        "evidence": "public Dataset, version 2, 9 files checksummed, licence: CC BY-NC-SA 4.0"
+      },
+      {
+        "gate": "G2",
+        "passed": true,
+        "evidence": "not one of Valentine's benchmark sources or their tables"
+      },
+      {
+        "gate": "G3",
+        "passed": true,
+        "evidence": "14 correspondences transcribed (documented relationship required for c_doc)"
+      },
+      {
+        "gate": "G4",
+        "passed": true,
+        "evidence": "3 of D1-D7 present without synthetic corruption: D3, D5, D7 (need 3)"
+      },
+      {
+        "gate": "G5",
+        "passed": true,
+        "evidence": "9 columns, largest table 50,000 rows; sampleable to 5k rows on a shared key"
+      }
+    ]
+  },
+  {
+    "summary": {
+      "dataset": "instacart",
+      "admitted": true,
+      "failed_gates": [],
+      "dimensions": [
+        "D3",
+        "D6",
+        "D7"
+      ],
+      "n_correspondences": 8
+    },
+    "gates": [
+      {
+        "gate": "G1",
+        "passed": true,
+        "evidence": "public Dataset, version 1, 6 files checksummed, licence: CC0: Public Domain"
+      },
+      {
+        "gate": "G2",
+        "passed": true,
+        "evidence": "not one of Valentine's benchmark sources or their tables"
+      },
+      {
+        "gate": "G3",
+        "passed": true,
+        "evidence": "8 correspondences transcribed (documented relationship required for c_doc)"
+      },
+      {
+        "gate": "G4",
+        "passed": true,
+        "evidence": "3 of D1-D7 present without synthetic corruption: D3, D6, D7 (need 3)"
+      },
+      {
+        "gate": "G5",
+        "passed": true,
+        "evidence": "7 columns, largest table 50,000 rows; sampleable to 5k rows on a shared key"
+      }
+    ]
+  }
+]

@@ -1,0 +1,177 @@
+# Documented schema — Olist Brazilian E-Commerce.
+#
+# Transcribed by hand from the dataset's published description (the "Data Schema" section
+# of the Kaggle page and its ERD), not inferred from the files. That distinction is the
+# whole point of C-doc: the ground truth must not be circular.
+#
+# What the page states, verbatim in substance:
+#   * customers: customer_id is the key on the order; one order gets one customer_id;
+#     customer_unique_id identifies the same person across orders.
+#   * orders: the order's key is order_id, and it carries customer_id.
+#   * order_items: one row per item in an order, joining order_id, product_id, seller_id.
+#   * payments: one row per payment method used in an order.
+#   * reviews: one review per order (the page notes some orders have no review).
+#   * products: product_id -> product_category_name, which is written in Portuguese.
+#   * product_category_name_translation: maps the Portuguese category name to English.
+#   * sellers: seller_id -> zip prefix, city, state.
+#   * geolocation: maps a Brazilian zip code prefix to lat/lng, city and state. The page
+#     states the zip prefix is the same key that appears in customers and sellers.
+#
+# Deliberately NOT transcribed: row counts. The page publishes none, so a mismatch found
+# by the D9 audit must mean a data problem, not a citation problem.
+
+dataset: olist
+source: https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce
+kaggle_slug: olistbr/brazilian-ecommerce
+version: "2"
+retrieved: 2026-11-02
+transcribed_by: Ashley Jurga
+verified_by: null          # second reader signs off during the 04.11 adjudication pass
+
+notes: >
+  Portuguese-language e-commerce data, 2016-2018. The interesting property for this
+  project is that the documented join keys are all name-identical, so a name-only matcher
+  gets them for free. The graded signal therefore comes from three places: the PT->EN
+  category translation (name says yes, values say no), the zip-prefix columns that share a
+  value domain with geolocation under a different name, and the declared traps.
+
+tables:
+
+  olist_customers_dataset:
+    columns: [customer_id, customer_unique_id, customer_zip_code_prefix, customer_city, customer_state]
+    keys: [customer_id]
+    row_count: null
+    # The customer_id -> orders foreign key is declared once, on the child side, in
+    # olist_orders_dataset. Declaring it here too would double-count the pair in every
+    # stratum tally.
+    corresponds:
+      # Both columns share the Brazilian zip-prefix domain. Different name, same values,
+      # and a different grain on the geolocation side (many lat/lng points per prefix).
+      - {column: customer_zip_code_prefix, table: olist_geolocation_dataset,
+         column_ref: geolocation_zip_code_prefix, stratum: S2,
+         note: "shared zip-prefix domain; documented in prose; geolocation is 1:n per prefix"}
+      - {column: customer_city, table: olist_geolocation_dataset, column_ref: geolocation_city,
+         stratum: S2, note: "same city vocabulary, unaccented lowercase on both sides"}
+      - {column: customer_state, table: olist_geolocation_dataset, column_ref: geolocation_state,
+         stratum: S2, note: "two-letter Brazilian UF code"}
+      # Sellers ship from the same national address space; no FK, shared domain only.
+      - {column: customer_zip_code_prefix, table: olist_sellers_dataset,
+         column_ref: seller_zip_code_prefix, stratum: S2,
+         note: "no foreign key; both are Brazilian zip prefixes"}
+      - {column: customer_city, table: olist_sellers_dataset, column_ref: seller_city,
+         stratum: S2, note: "no foreign key; shared city vocabulary"}
+      - {column: customer_state, table: olist_sellers_dataset, column_ref: seller_state,
+         stratum: S2, note: "no foreign key; shared UF vocabulary"}
+
+  olist_geolocation_dataset:
+    columns: [geolocation_zip_code_prefix, geolocation_lat, geolocation_lng, geolocation_city, geolocation_state]
+    keys: []
+    row_count: null
+    notes: >
+      One million rows, many per zip prefix. Sampled by `swsn.sampling` before any matcher
+      run; the sample must be drawn on the prefix key so it stays join-compatible with
+      customers and sellers.
+
+  olist_orders_dataset:
+    columns: [order_id, customer_id, order_status, order_purchase_timestamp, order_approved_at,
+              order_delivered_carrier_date, order_delivered_customer_date, order_estimated_delivery_date]
+    keys: [order_id]
+    row_count: null
+    references:
+      - {column: customer_id, table: olist_customers_dataset, column_ref: customer_id, stratum: S1}
+    notes: >
+      The hub table: order_items, payments and reviews all point here. Four of the five
+      documented foreign keys in this dataset start or end at orders.order_id.
+
+  olist_order_items_dataset:
+    columns: [order_id, order_item_id, product_id, seller_id, shipping_limit_date, price, freight_value]
+    keys: [order_id, order_item_id]
+    row_count: null
+    references:
+      - {column: order_id, table: olist_orders_dataset, column_ref: order_id, stratum: S1}
+      - {column: product_id, table: olist_products_dataset, column_ref: product_id, stratum: S1}
+      - {column: seller_id, table: olist_sellers_dataset, column_ref: seller_id, stratum: S1}
+    notes: >
+      Grain differs from orders: several item rows per order. This is the P-grain case —
+      the key correspondence is real but not one-to-one, so a matcher that assumes a
+      unique key will look wrong.
+
+  olist_order_payments_dataset:
+    columns: [order_id, payment_sequential, payment_type, payment_installments, payment_value]
+    keys: [order_id, payment_sequential]
+    row_count: null
+    references:
+      - {column: order_id, table: olist_orders_dataset, column_ref: order_id, stratum: S1}
+    notes: >
+      Several payment rows per order when a purchase is split across methods. The value is
+      in BRL and only sums to the item total when freight and instalments are accounted for.
+
+  olist_order_reviews_dataset:
+    columns: [review_id, order_id, review_score, review_comment_title, review_comment_message,
+              review_creation_date, review_answer_timestamp]
+    keys: [review_id]
+    row_count: null
+    references:
+      - {column: order_id, table: olist_orders_dataset, column_ref: order_id, stratum: S1}
+    notes: >
+      Free-text review columns are the messiest in the dataset: comments are Portuguese,
+      multi-line, quoted CSV, and mostly empty. Prices computed on a raw read are the
+      same shape (numeric) but a different order of magnitude.
+
+  olist_products_dataset:
+    columns: [product_id, product_category_name, product_name_lenght, product_description_lenght,
+              product_photos_qty, product_weight_g, product_length_cm, product_height_cm, product_width_cm]
+    keys: [product_id]
+    row_count: null
+    corresponds:
+      # The documented join into the translation table, on the Portuguese name.
+      - {column: product_category_name, table: product_category_name_translation,
+         column_ref: product_category_name, stratum: S1,
+         note: "the translation table's own join key"}
+      # The actual translation. The two columns share a name prefix and carry the same
+      # concepts, but the values are in a different language, so value evidence and name
+      # evidence point in opposite directions. This is the single most informative
+      # correspondence in the dataset.
+      - {column: product_category_name, table: product_category_name_translation,
+         column_ref: product_category_name_english, stratum: S3,
+         note: "same concept, Portuguese vs English wording; name_sim high, value_sim ~0"}
+    notes: >
+      Note the misspelling in the published schema itself: `product_name_lenght` and
+      `product_description_lenght`. It is in the source data, so it is transcribed as is —
+      a matcher that normalises on a Portuguese/English dictionary does not fix it.
+
+  olist_sellers_dataset:
+    columns: [seller_id, seller_zip_code_prefix, seller_city, seller_state]
+    keys: [seller_id]
+    row_count: null
+
+  product_category_name_translation:
+    columns: [product_category_name, product_category_name_english]
+    keys: [product_category_name]
+    row_count: null
+    notes: >
+      UTF-8 BOM at the start of the file. pandas strips it on read with the C parser, but
+      a plain `csv.DictReader` or `open()` does not, and the first column becomes
+      "﻿product_category_name". Recorded here because it will bite during the ladder.
+
+# ---------------------------------------------------------------------------------------
+# Negative space (S4). These are NOT correspondences. They are pairs a matcher is likely
+# to propose and that are wrong, declared up front so the probe can count false positives
+# against them rather than argue about them after the fact.
+# ---------------------------------------------------------------------------------------
+traps:
+  - {table_a: olist_orders_dataset, col_a: customer_id,
+     table_b: olist_customers_dataset, col_b: customer_unique_id,
+     note: "same 32-hex shape; customer_id is order-scoped, customer_unique_id is the person"}
+  - {table_a: olist_orders_dataset, col_a: order_id,
+     table_b: olist_order_reviews_dataset, col_b: review_id,
+     note: "both 32-hex primary-key-shaped identifiers, unrelated values"}
+  - {table_a: olist_order_items_dataset, col_a: order_item_id,
+     table_b: olist_order_payments_dataset, col_b: payment_sequential,
+     note: "both small per-order ordinals starting at 1"}
+  - {table_a: olist_order_items_dataset, col_a: price,
+     table_b: olist_order_payments_dataset, col_b: payment_value,
+     note: "both BRL amounts at order grain, but items and payments are different rows"}
+  - {table_a: olist_order_reviews_dataset, col_a: review_creation_date,
+     table_b: olist_orders_dataset, col_b: order_delivered_customer_date,
+     note: "both timestamps; review creation is not delivery"}

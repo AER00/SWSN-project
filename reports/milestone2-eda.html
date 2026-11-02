@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Milestone 2 — EDA report</title>
+<style>
+  @page { size: A4; margin: 11mm 13mm 9mm 13mm; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Charter", "Georgia", serif;
+    font-size: 8.1pt; line-height: 1.26; color: #111; margin: 0;
+  }
+  h1 { font-size: 12pt; margin: 0 0 1mm 0; letter-spacing: -0.2px; }
+  .sub { font-size: 8pt; color: #555; margin: 0 0 3mm 0; }
+  h2 { font-size: 8.8pt; margin: 2.4mm 0 1.0mm 0; padding-bottom: 0.6mm;
+       border-bottom: 0.5px solid #bbb; }
+  h2 .n { color: #888; margin-right: 1.5mm; }
+  p { margin: 0 0 1.6mm 0; text-align: justify; hyphens: auto; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; align-items: start; }
+  .side { display: grid; grid-template-columns: 1.15fr 1fr; gap: 4mm; align-items: start; }
+  figure { margin: 1mm 0 1.2mm 0; break-inside: avoid; page-break-inside: avoid; }
+  figure img { width: 100%; display: block; }
+  figure.fig-f1 img { width: 44%; margin: 0 auto; }
+  figure.fig-f2 img { width: 33%; margin: 0 auto; }
+  figcaption { font-size: 6.9pt; color: #444; margin-top: 0.6mm; line-height: 1.22; }
+  table { border-collapse: collapse; width: 100%; font-size: 7.4pt; margin: 1mm 0 2mm 0; }
+  th, td { padding: 0.7mm 1.2mm; text-align: right; border-bottom: 0.4px solid #ddd; }
+  th { border-bottom: 0.8px solid #666; font-weight: 600; text-align: right; }
+  th:first-child, td:first-child { text-align: left; }
+  tr.hi td { background: #fdf3ea; font-weight: 600; }
+  code { font-family: "SF Mono", "Menlo", monospace; font-size: 7.4pt; background: #f2f2f2;
+         padding: 0 0.6mm; border-radius: 1px; }
+  ul { margin: 0.5mm 0 1.5mm 0; padding-left: 4.5mm; }
+  li { margin-bottom: 0.6mm; }
+  .note { font-size: 7.2pt; color: #555; }
+  .kpi { display: flex; gap: 4mm; margin: 1.5mm 0 2.5mm 0; }
+  .kpi div { flex: 1; border-left: 1.6px solid #c86a1e; padding-left: 2mm; }
+  .kpi .v { font-size: 12pt; font-weight: 700; line-height: 1.05; }
+  .kpi .l { font-size: 6.9pt; color: #555; line-height: 1.2; }
+  .foot { font-size: 6.8pt; color: #777; border-top: 0.5px solid #ccc;
+          margin-top: 2.5mm; padding-top: 1mm; }
+</style>
+</head>
+<body>
+
+<h1>Valentine on messy Kaggle tables</h1>
+<p class="sub">Milestone 2 — datasets, exploratory analysis and the ground truth they supply ·
+SWSN 2026/27 · Ashley Jurga, Paweł Laszczyk, Jakub Laskowski, Jakub Górniak · 2026-11-08</p>
+
+<h2><span class="n">1</span>Motivation and question</h2>
+<p>
+Valentine (ICDE 2021) is benchmarked on TPC-DI, Open Data, ChEMBL, WikiData and Magellan —
+curated sources whose columns are named in one language, in one convention, by one
+publisher. Schemas arriving from Kaggle are not like that: the same concept is written
+<code>selling_price</code> on one upload and <code>Price</code> on another, values are
+formatted four ways in one column, and there is no documentation to say which columns
+correspond. Our question for this milestone is the measurement one that has to come before
+any improvement: <em>when a relationship is known to exist, does Valentine find it — and
+which kind of mess stops it?</em>
+</p>
+
+<h2><span class="n">2</span>Datasets</h2>
+<p>
+Three classes, because one kind of ground truth cannot answer three different questions.
+<strong>C-doc</strong> — documented multi-file Kaggle datasets, where the publisher states
+which columns correspond; this gives exact ground truth but only for clean, name-identical
+keys. <strong>C-nat</strong> — independent uploads in the same domain, annotated by hand;
+no documentation exists there, which is the point. <strong>C-syn</strong> — the C-doc
+tables degraded along a declared ladder, with ground truth preserved through recorded
+rename maps; this is the only class that isolates <em>which</em> dimension of dirt breaks
+<em>which</em> matcher.
+</p>
+<p>
+Every candidate passed a five-part admission gate (G1 provenance, G2 not in Valentine's
+benchmark, G3 pairing, G4 ≥3 of D1–D7 present, G5 tractability). Eight datasets were
+admitted across four domains: Olist (e-commerce, CC BY-NC-SA 4.0), Instacart (grocery,
+CC0), Craigslist Cars and Cardekho (used cars, CC0 / open database), Airbnb NYC and
+Melbourne Housing (housing), Heart Failure and Diabetes (health). MovieLens was dropped:
+its slug now returns HTTP 403. Eighteen table pairs are declared, each with a rationale.
+</p>
+
+<h2><span class="n">3</span>What "messy" means here</h2>
+<p>
+Seven per-column dimensions were profiled (D1 header noise, D2 type instability, D3
+missingness and sentinels, D4 format heterogeneity, D5 categorical noise, D6 cardinality and
+texture, D7 distribution shape), plus D9, a documentation-fidelity audit that only the
+documented datasets make possible.
+</p>
+
+<div class="kpi">
+  <div><div class="v">1.00</div><div class="l">column coverage, D9 audit — both C-doc datasets</div></div>
+  <div><div class="v">12/12</div><div class="l">documented foreign keys resolve at 100.00 %</div></div>
+  <div><div class="v">3/7</div><div class="l">dimensions present at L0 — the gate minimum</div></div>
+</div>
+
+<p>
+The first finding is negative and it shapes everything after. Olist exhibits D3, D5, D7;
+Instacart D3, D6, D7. <strong>D1, D2 and D4 are absent from both.</strong> Real Kaggle data
+is clean in exactly the dimensions a schema matcher is most sensitive to: headers are
+snake_case, inferred types are stable, and every column uses one format. The mess this
+project is about is concentrated in free-text review columns and, above all,
+<em>across</em> tables — the same concept written differently on each side — which no
+per-column profile can see.
+</p>
+<p>
+The D9 audit found no gaps at all: every documented column is present, nothing undocumented,
+and all twelve documented foreign keys resolve, on tables up to 32 million child rows. That
+is the precondition for the whole design — if the documentation did not hold, ground truth
+derived from it would be worthless.
+</p>
+<figure class="fig-f1">
+  <img src="figures/f1_dirtiness.svg" alt="Dirtiness profile">
+  <figcaption><strong>Figure 1.</strong> D1–D7 per table at L0. Sparse on purpose: nine of
+  thirteen tables exhibit at most one dimension, and the three dimensions that matter most
+  to a matcher are empty everywhere. Instacart's D3 is structural —
+  <code>days_since_prior_order</code> is null for every user's first order.</figcaption>
+</figure>
+
+<h2><span class="n">4</span>Cross-table signal</h2>
+<p>
+To see what the per-column profile cannot, every candidate column pair across two tables was
+placed in a name-similarity × value-overlap plane (D8). Documented correspondences should
+land in the easy quadrant (Q1) and traps in the misnamed one (Q3); a correspondence that
+lands in Q2 — names disagree, values agree — is one a name-based matcher cannot reach
+without help.
+</p>
+<figure class="fig-f2">
+  <img src="figures/f2_quadrants.svg" alt="D8 quadrants">
+  <figcaption><strong>Figure 2.</strong> Olist <code>products</code> ×
+  <code>category_translation</code>. The documented key sits at (0.99, 0.98) — easy. The
+  genuine translation <code>product_category_name</code> ↔
+  <code>product_category_name_english</code> sits at <strong>(0.72, 0.03)</strong>: names
+  agree, values share almost nothing, because one side is Portuguese and the other
+  English.</figcaption>
+</figure>
+
+<h2><span class="n">5</span>Can Valentine see documented relationships?</h2>
+<p>
+Recovery@1 — the share of documented correspondences a matcher places first for their
+source column — on the unmodified data. Pairs whose target table has fewer columns than
+<em>k</em> are flagged degenerate and excluded: with two target columns a top-3 contains
+everything, and scoring that as success would have flattered every matcher equally.
+</p>
+
+<table>
+<tr><th>matcher</th><th>L0</th><th>L1 header</th><th>L2 +values</th><th>L3 +noise</th><th>L4 +semantic</th></tr>
+<tr><td>COMA</td><td>0.958</td><td class="hi">0.431</td><td>0.431</td><td>0.431</td><td>0.431</td></tr>
+<tr><td>SimilarityFlooding</td><td>0.958</td><td class="hi">0.833</td><td>0.750</td><td>0.722</td><td>0.722</td></tr>
+<tr><td>Jaccard</td><td>0.875</td><td class="hi">0.708</td><td>0.403</td><td>0.403</td><td>0.403</td></tr>
+<tr><td>Cupid</td><td>0.847</td><td class="hi">0.292</td><td>0.208</td><td>0.292</td><td>0.292</td></tr>
+<tr><td>DistributionBased</td><td>0.648</td><td class="hi">0.537</td><td>0.292</td><td>0.283</td><td>0.250</td></tr>
+</table>
+<p class="note">
+Table 1. Recovery@1, cumulative ladder, 12 documented table pairs, 5,000-row join-aware
+samples, seed 42. 300 runs per mode; DistributionBased raised in 10 of its 60 runs and is
+excluded from cross-matcher comparison.
+</p>
+
+<h2><span class="n">6</span>What controlled degradation shows</h2>
+<p>
+Because the raw data lacks D1/D2/D4, those dimensions were introduced deliberately — one
+dimension per level, one-sided (table A corrupted, table B clean), ground truth composed
+through the recorded rename map. Two modes answer different questions and the distinction
+matters: <em>attribution</em> applies only each level's own operators to the original frame,
+so levels do not stack; <em>cumulative</em> applies levels 0..n in order, giving the
+degradation curve in Table 1 and Figure 3.
+</p>
+
+<div class="two">
+  <figure>
+    <img src="figures/f3_degradation.svg" alt="Degradation curve">
+    <figcaption><strong>Figure 3.</strong> Recovery@1 as corruption accumulates. The entire
+    loss happens between L0 and L1.</figcaption>
+  </figure>
+  <figure>
+    <img src="figures/f4_strata_coma.svg" alt="Recovery by stratum">
+    <figcaption><strong>Figure 4.</strong> COMA by stratum. S1 freebies and S2 renamed keys
+    survive to L1; the S3 translation is recovered at no level.</figcaption>
+  </figure>
+</div>
+
+<p>
+Header noise costs more than every other dimension combined. COMA falls from 0.958 to 0.431
+the moment columns are renamed, abbreviated and translated, and the value-format level after
+it adds nothing — once the names are gone, the name channel was the only signal it had that
+mattered. Value-based matchers tell the complementary story: Jaccard is unaffected by
+renaming and loses its recovery at L2, when numbers acquire thousands separators and
+decimal commas. The two failure modes are almost disjoint, which is the strongest available
+argument that a matcher using only one channel cannot be robust.
+</p>
+<p>
+The stratified view is where the project's case lives: <strong>the one genuinely
+cross-lingual correspondence is recovered by no matcher, at no corruption level — 0.0
+throughout.</strong> Every other stratum recovers; this one does not. It is not a noise
+problem, a threshold problem or a sampling artefact: the name channel ranks the
+identical-name column first, correctly, and the value channel sees disjoint vocabularies.
+Neither channel can promote it, and no amount of tuning changes that.
+</p>
+
+<h2><span class="n">7</span>Implications and limits</h2>
+<ul>
+  <li><strong>For M3/M4.</strong> The extension should canonicalise <em>values</em> to give
+  the value channel a chance at cross-lingual and format-shifted pairs, and preserve
+  <em>names</em> structurally so header noise cannot sever the name channel. The four
+  canonicalisation components in <code>src/swsn/extension/</code> already map one-to-one
+  onto the ladder dimensions, so each can be ablated against the level it repairs.</li>
+  <li><strong>Against over-claiming.</strong> Aggregate F1 is never reported alone; it is
+  dominated by S1 and would hide exactly the failure this project is about. Every headline
+  number is stratified.</li>
+  <li><strong>Threats to validity.</strong> One-sided corruption is an idealisation — real
+  mess is usually on both sides. The 5,000-row cap and join-aware sampling change the
+  statistics, so all figures are at the cap, never extrapolated. DistributionBased does not
+  run reliably against its own declared PuLP dependency (two distinct upstream defects,
+  reproduced), so five matchers become four in comparison. And the S3 evidence rests on a
+  single documented pair: the finding is strong within this collection and needs a second
+  cross-lingual source before it generalises.</li>
+</ul>
+
+<p class="foot">
+Artifacts: <code>data/datasets.yaml</code> (registry and 18 pairs) ·
+<code>ground_truth/schema/</code> (transcribed, cited) · <code>evaluation/protocol.yaml</code>
+(frozen design) · <code>evaluation/results_{attribution,cumulative}.csv</code> (600 runs) ·
+<code>notebooks/00–06</code> (all executable) · <code>docs/findings.md</code> (§6 findings,
+including four profiler defects found and fixed).
+Reproduce with <code>make setup data triage bench figures eda</code>.
+</p>
+
+</body>
+</html>

@@ -36,8 +36,8 @@ datasets:
       olist_products_dataset.csv: 3e6569628a17fbc75fd206ee357b59e20364b9afa90f5b6cd5b4d624c58aa9cc
       olist_sellers_dataset.csv: 1f643d2b950373b85735e7794b20986f528d7a000432e7c6f9bcbb44d0846a0e
       product_category_name_translation.csv: a81f0d1f27b27e7293f761bc79e3ce8f348ee39c4b3ed3e49bde38f478586278
-    licence: null          # reported as CC BY-NC-SA 4.0 — confirm on the dataset page before publishing
-    status: candidate
+    licence: "CC BY-NC-SA 4.0"   # read from https://www.kaggle.com/api/v1/datasets/view/<slug>
+    status: admitted
     notes: >
       9 CSVs with a published data-schema section. Primary C-doc candidate: renamed and
       cross-lingual columns (PT/EN category names), many-to-one translation table,
@@ -48,14 +48,23 @@ datasets:
     class: c_doc
     domain: grocery
     kaggle_slug: psparks/instacart-market-basket-analysis
-    version: null
-    sha256: {}
-    licence: null
-    status: candidate
+    version: "1"
+    sha256:
+      aisles.csv: 2c5f4677761907d3a3ca01edd2d2abe67c147cc60e4905e68736d5f9f3046067
+      departments.csv: e6829cea3da95ec22eeb4e0294094a68b929f3bcfda48fdd7d1e33403110fc43
+      order_products__prior.csv: 27b59dc9cf0d485f55e64e0bc9c5d6fb077ae167f8dfeab9246a03b5b0186359
+      order_products__train.csv: d27c4034883051c85e37c2cb0379fecbbeccad932970e171461aa99f18f75aea
+      orders.csv: 92a60ced67ac33bd82271f66ff9675374f69482d17a0e1442ba42caa8b3bff89
+      products.csv: abc61fdd748003d280ae49cc5d71b65380805ab1ca55dba96fd9a49295ea78b9
+    licence: "CC0: Public Domain"
+    status: admitted
     notes: >
       6 CSVs, documented hierarchy orders -> order_products -> products -> aisles,
-      departments. Small and fast; good first probe. Verify the slug is a Dataset
-      upload, not the original competition.
+      departments. 713 MB, dominated by the 32M-row order_products__prior. Confirmed a
+      Dataset upload, not the competition, so it downloads anonymously.
+      Serves as the clean control: all 8 documented correspondences are S1 and the values
+      are unformatted integers, so at L0 it should show near-perfect name-based recovery
+      and an empty S2/S3 stratum. That is the point — it is what the ladder degrades.
 
   - id: movielens
     class: c_doc
@@ -64,94 +73,235 @@ datasets:
     version: null
     sha256: {}
     licence: null
-    status: candidate
+    status: dropped
     notes: >
-      6 CSVs, documented. links.csv maps movieId -> imdbId/tmdbId, which enables a
-      controlled cross-dataset discovery scenario. Optional (time permitting).
+      Dropped 2026-11-02 at triage: the slug returns HTTP 403 from the Kaggle metadata
+      endpoint, so it is either not public or no longer exists under this name. Never
+      downloaded. It was optional in the plan anyway — Olist and Instacart already give the
+      contrast the report needs (messy PT/EN with S2/S3 populated, versus clean all-S1),
+      and the days saved go to the C-nat annotation round.
 
   # ---------------------------------------------------------------- C-nat candidates
   - id: craigslist_cars
     class: c_nat
     domain: used-cars
     kaggle_slug: austinreese/craigslist-carstrucks-data
-    version: null
-    sha256: {}
-    licence: null
-    status: candidate
-    notes: Large, famously messy free-text and mixed-type columns.
+    version: "10"
+    sha256:
+      vehicles.csv: 54c60e20aa494a73f7f9170bff1e38b4800472b767cab8f9dab7da5dcc261a5c
+    licence: "CC0: Public Domain"
+    status: admitted
+    notes: >
+      1.4 GB, 26 columns of genuinely messy free text: description, VIN, paint_color,
+      condition, cylinders, drive, size, type are mostly null, and price/odometer are
+      numeric strings with junk. This is the table that justifies the project's premise —
+      the other C-nat sources are far cleaner than the literature implies. Sampled to 5k
+      rows before any matcher run.
 
   - id: cardekho_vehicles
     class: c_nat
     domain: used-cars
     kaggle_slug: nehalbirla/vehicle-dataset-from-cardekho
-    version: null
-    sha256: {}
-    licence: null
-    status: candidate
-    notes: Structured counterpart to craigslist_cars; pair for the used-cars domain.
+    version: "4"
+    sha256:
+      "CAR DETAILS FROM CAR DEKHO.csv": 454fe4ea4f6d2af973493287abf0631006a32bd4f462103e4dfcffa75d721edf
+      "Car details v3.csv": 1b2a30b2f36fd246366773fe5375399692f1a113890ad2a6d464b8c8deaadadb
+      "car data.csv": 00b477def120548e583c638b00146982956b80646817901245ef78da9c4b3063
+      "car details v4.csv": 6841a81165c2a390d84b361555489e123f739f0e4b2bfe7915e759746b3efe59
+    licence: "Database: Open Database, Contents: Database Contents"
+    status: admitted
+    notes: >
+      Ships four CSVs that are four versions of the same used-car domain under four
+      different naming conventions: snake_case (`car data.csv`), lower snake
+      (`CAR DETAILS FROM CAR DEKHO.csv`), Title Case with units (`Car details v3.csv`) and
+      spaced Title Case (`car details v4.csv`). That is a naturally occurring S2/S3 test
+      bed — same concepts, different names and formats — with no corruption applied.
 
   - id: airbnb_nyc
     class: c_nat
     domain: housing
     kaggle_slug: dgomonov/new-york-city-airbnb-open-data
-    version: null
-    sha256: {}
-    licence: null
-    status: candidate
-    notes: Pair with Melbourne housing or King County sales.
+    version: "3"
+    sha256:
+      AB_NYC_2019.csv: e420db40ff10fcb40efc1b5b1648ee0b18a48f4e4537155cecc59fe95d18783a
+    licence: "CC0: Public Domain"
+    status: admitted
+    notes: >
+      49k rows, 16 columns. Cross-upload partner for melbourne_housing: both describe
+      short-term rentals by price, room type and coordinates, but the column names share
+      almost nothing.
 
   - id: melbourne_housing
     class: c_nat
     domain: housing
     kaggle_slug: anthonypino/melbourne-housing-market
-    version: null
-    sha256: {}
-    licence: null
-    status: candidate
-
-  - id: linkedin_jobs
-    class: c_nat
-    domain: jobs
-    kaggle_slug: arshkon/linkedin-job-postings
-    version: null
-    sha256: {}
-    licence: null
-    status: candidate
-    notes: Multi-file job postings; also a candidate for a P-grain pair.
-
-  - id: ds_salaries
-    class: c_nat
-    domain: jobs
-    kaggle_slug: ruchi798/data-science-job-salaries
-    version: null
-    sha256: {}
-    licence: null
-    status: candidate
+    version: "27"
+    sha256:
+      MELBOURNE_HOUSE_PRICES_LESS.csv: 145c1499c13e144c325898d45a3480d0a8a3282a5610563a669576b0870fd07b
+      Melbourne_housing_FULL.csv: b0431746ca49a2131ade9a9ce4a7bb2b38bd670bf11981dd62f8e19c0ed660ac
+    licence: "CC BY-NC-SA 4.0"
+    status: admitted
+    notes: >
+      Two files that are a documented projection of one another: FULL has 21 columns,
+      LESS has the same keys minus Bedroom2/Bathroom/Car/Landsize/BuildingArea/YearBuilt/
+      CouncilArea/Lattitude/Longtitude. A P-split control where ground truth is the
+      column intersection rather than an annotation.
 
   - id: heart_failure
     class: c_nat
     domain: health
     kaggle_slug: fedesoriano/heart-failure-prediction
-    version: null
-    sha256: {}
-    licence: null
-    status: candidate
+    version: "1"
+    sha256:
+      heart.csv: 948420b084d8a3a0ca42b8419fce9aee175879e43f8aedf712377899a67aa49b
+    licence: "Database: Open Database, Contents: © Original Authors"
+    status: admitted
+    notes: >
+      918 rows, 12 columns, CamelCase names and abbreviated clinical terms
+      (ChestPainType, RestingBP, Oldpeak, ST_Slope). Tiny; costs nothing to carry.
 
   - id: diabetes
     class: c_nat
     domain: health
     kaggle_slug: iammustafatz/diabetes-prediction-dataset
-    version: null
-    sha256: {}
-    licence: null
-    status: candidate
+    version: "1"
+    sha256:
+      diabetes_prediction_dataset.csv: f233fc470e904201f35310d061cb46ca0a6bc7ca5c3e428b769fb4f87f69929b
+    licence: "Data files © Original Authors"
+    status: admitted
+    notes: >
+      100k rows, 9 columns, snake_case. Cross-upload partner for heart_failure: overlapping
+      clinical concepts (age, sex, smoking/bmi, hypertension) under a different naming
+      convention and a different grain.
 
-# Table pairs are declared separately once triage is complete: which table from A is
-# matched against which table from B, the pair type (P-natural / P-grain / P-split), and
-# the one-sentence rationale for why the two tables would be related in practice.
-pairs: []
-# - id: olist_orders__payments
-#   a: { dataset: olist, table: olist_orders_dataset }
-#   b: { dataset: olist, table: olist_order_payments_dataset }
-#   pair_type: p_grain
-#   rationale: "one order can be settled by several payment rows"
+# Table pairs. Each names two tables, the pair type (p_doc / p_natural / p_grain /
+# p_split) and one sentence on why these two tables would be related in practice. A pair
+# with no rationale is rejected by swsn.registry.
+#
+# p_doc      both tables from one documented dataset
+# p_natural  two independent uploads in the same domain, no shared key
+# p_grain    related tables at different grain (one order -> many payments)
+# p_split    one table split in two; the control condition
+pairs:
+
+  # ------------------------------------------------------------------ Olist (c_doc)
+  - id: olist_orders__payments
+    a: {dataset: olist, table: olist_orders_dataset}
+    b: {dataset: olist, table: olist_order_payments_dataset}
+    pair_type: p_grain
+    join_key: [order_id, order_id]
+    rationale: "one order can be settled by several payment rows"
+  - id: olist_orders__items
+    a: {dataset: olist, table: olist_orders_dataset}
+    b: {dataset: olist, table: olist_order_items_dataset}
+    pair_type: p_grain
+    join_key: [order_id, order_id]
+    rationale: "one order contains one item row per product bought"
+  - id: olist_items__products
+    a: {dataset: olist, table: olist_order_items_dataset}
+    b: {dataset: olist, table: olist_products_dataset}
+    pair_type: p_doc
+    join_key: [product_id, product_id]
+    rationale: "each item row names the product it sells"
+  - id: olist_items__sellers
+    a: {dataset: olist, table: olist_order_items_dataset}
+    b: {dataset: olist, table: olist_sellers_dataset}
+    pair_type: p_doc
+    join_key: [seller_id, seller_id]
+    rationale: "each item row names the seller who fulfils it"
+  - id: olist_orders__customers
+    a: {dataset: olist, table: olist_orders_dataset}
+    b: {dataset: olist, table: olist_customers_dataset}
+    pair_type: p_doc
+    join_key: [customer_id, customer_id]
+    rationale: "each order is placed by exactly one customer"
+  - id: olist_products__translation
+    a: {dataset: olist, table: olist_products_dataset}
+    b: {dataset: olist, table: product_category_name_translation}
+    pair_type: p_doc
+    rationale: >
+      the translation table exists only to map products' Portuguese category names to
+      English; the join is documented and the two sides carry different value wording
+  - id: olist_customers__geolocation
+    a: {dataset: olist, table: olist_customers_dataset}
+    b: {dataset: olist, table: olist_geolocation_dataset}
+    pair_type: p_doc
+    join_key: [customer_zip_code_prefix, geolocation_zip_code_prefix]
+    rationale: "customer addresses resolve to coordinates through the zip prefix"
+  - id: olist_customers__sellers
+    a: {dataset: olist, table: olist_customers_dataset}
+    b: {dataset: olist, table: olist_sellers_dataset}
+    pair_type: p_natural
+    rationale: >
+      no foreign key, but both describe Brazilian addresses in the same vocabulary;
+      a name-similarity matcher has almost nothing to work with here
+
+  # -------------------------------------------------------------- Instacart (c_doc)
+  - id: instacart_orders__prior
+    a: {dataset: instacart, table: orders}
+    b: {dataset: instacart, table: order_products__prior}
+    pair_type: p_grain
+    join_key: [order_id, order_id]
+    rationale: "one order lists many products"
+  - id: instacart_products__aisles
+    a: {dataset: instacart, table: products}
+    b: {dataset: instacart, table: aisles}
+    pair_type: p_doc
+    join_key: [aisle_id, aisle_id]
+    rationale: "every product belongs to exactly one aisle"
+  - id: instacart_products__departments
+    a: {dataset: instacart, table: products}
+    b: {dataset: instacart, table: departments}
+    pair_type: p_doc
+    join_key: [department_id, department_id]
+    rationale: "every product belongs to exactly one department"
+  - id: instacart_prior__train
+    a: {dataset: instacart, table: order_products__prior}
+    b: {dataset: instacart, table: order_products__train}
+    pair_type: p_split
+    join_key: [order_id, order_id]
+    rationale: >
+      the same schema over disjoint orders — a control where name evidence is perfect
+      and value overlap on the key is exactly zero
+
+  # ------------------------------------------------------------------ C-nat pairs
+  - id: cardekho_data__cardetails
+    a: {dataset: cardekho_vehicles, table: car data}
+    b: {dataset: cardekho_vehicles, table: CAR DETAILS FROM CAR DEKHO}
+    pair_type: p_natural
+    rationale: >
+      two uploads of the same Indian used-car domain under different naming
+      conventions (snake_case vs spaced Title Case)
+  - id: cardekho_v3__v4
+    a: {dataset: cardekho_vehicles, table: Car details v3}
+    b: {dataset: cardekho_vehicles, table: car details v4}
+    pair_type: p_natural
+    rationale: "same domain, the richest column sets on each side, different conventions"
+  - id: melbourne_full__less
+    a: {dataset: melbourne_housing, table: Melbourne_housing_FULL}
+    b: {dataset: melbourne_housing, table: MELBOURNE_HOUSE_PRICES_LESS}
+    pair_type: p_split
+    rationale: >
+      LESS is a documented projection of FULL: same keys, eight columns dropped. Ground
+      truth is the column intersection, so it needs no annotation
+  - id: airbnb__melbourne
+    a: {dataset: airbnb_nyc, table: AB_NYC_2019}
+    b: {dataset: melbourne_housing, table: Melbourne_housing_FULL}
+    pair_type: p_natural
+    rationale: >
+      two independent uploads describing short-term rentals by price, room/bedroom count
+      and coordinates, in different cities and under different column names
+  - id: heart__diabetes
+    a: {dataset: heart_failure, table: heart}
+    b: {dataset: diabetes, table: diabetes_prediction_dataset}
+    pair_type: p_natural
+    rationale: >
+      two independent clinical uploads sharing risk factors (age, sex, BMI, smoking,
+      hypertension) under CamelCase vs snake_case conventions
+  - id: craigslist__cardekho
+    a: {dataset: craigslist_cars, table: vehicles}
+    b: {dataset: cardekho_vehicles, table: Car details v3}
+    pair_type: p_natural
+    rationale: >
+      the same used-car domain from two continents: craigslist is free text and mostly
+      null, cardekho is structured — the hardest pair in the collection

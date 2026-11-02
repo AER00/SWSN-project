@@ -1,0 +1,106 @@
+# Documented schema — Instacart Market Basket Analysis.
+#
+# Transcribed from the data description that ships with the dataset: the six CSVs and the
+# relations between them are stated explicitly there, which is what makes it usable as
+# C-doc. Row counts are not published, so they are left null.
+#
+# What the description states, in substance:
+#   * orders, one row per order, with user_id, eval_set, order_number, order_dow,
+#     order_hour_of_day, days_since_prior_order.
+#   * order_products__prior / order_products__train, one row per product in an order.
+#     The description says the two files contain the same columns and that the orders in
+#     them are distinct — prior holds every earlier order, train the final order of each
+#     user in the train eval_set.
+#   * products, one row per product, with product_name, aisle_id, department_id.
+#   * aisles and departments, the two levels of the product hierarchy.
+#
+# The `eval_set` column of orders is the partition marker: 'prior' rows belong to
+# order_products__prior, 'train' rows to order_products__train.
+
+dataset: instacart
+source: https://www.kaggle.com/datasets/psparks/instacart-market-basket-analysis
+kaggle_slug: psparks/instacart-market-basket-analysis
+version: "1"
+retrieved: 2026-11-02
+transcribed_by: Ashley Jurga
+verified_by: null
+
+notes: >
+  The deliberate clean control. Its documented keys are name-identical and its values are
+  clean integers, so at L0 it should show the opposite pathology to Olist: near-perfect
+  name-based recovery and almost nothing in the S2/S3 strata. If the probe finds
+  interesting signal here without corruption, something is wrong with the probe. Its real
+  value is as the baseline that the corruption ladder degrades — plus one natural control
+  the documentation hands us for free: order_products__prior and order_products__train
+  have identical schemas and disjoint orders.
+
+tables:
+
+  orders:
+    columns: [order_id, user_id, eval_set, order_number, order_dow, order_hour_of_day, days_since_prior_order]
+    keys: [order_id]
+    row_count: null
+    notes: >
+      days_since_prior_order is null for every user's first order — 206,209 of 3.4M rows.
+      That is structural missingness, not data loss, and it is the D3 finding this dataset
+      contributes. order_number is a per-user ordinal starting at 1.
+
+  order_products__prior:
+    columns: [order_id, product_id, add_to_cart_order, reordered]
+    keys: [order_id, product_id]
+    row_count: null
+    references:
+      - {column: order_id, table: orders, column_ref: order_id, stratum: S1}
+      - {column: product_id, table: products, column_ref: product_id, stratum: S1}
+    corresponds:
+      # The description states both files carry the same columns over disjoint orders.
+      # Name and schema identical, value overlap on order_id exactly zero.
+      - {column: order_id, table: order_products__train, column_ref: order_id, stratum: S1,
+         note: "same schema, disjoint orders — a name-says-yes / values-say-no control"}
+      - {column: product_id, table: order_products__train, column_ref: product_id, stratum: S1,
+         note: "same product vocabulary across the two partitions"}
+
+  order_products__train:
+    columns: [order_id, product_id, add_to_cart_order, reordered]
+    keys: [order_id, product_id]
+    row_count: null
+    references:
+      - {column: order_id, table: orders, column_ref: order_id, stratum: S1}
+      - {column: product_id, table: products, column_ref: product_id, stratum: S1}
+
+  products:
+    columns: [product_id, product_name, aisle_id, department_id]
+    keys: [product_id]
+    row_count: null
+    references:
+      - {column: aisle_id, table: aisles, column_ref: aisle_id, stratum: S1}
+      - {column: department_id, table: departments, column_ref: department_id, stratum: S1}
+    notes: >
+      product_name is the only free-text column in the dataset and the only source of D5
+      noise: brand names, units and punctuation ("Robust Golden Unsweetened Oolong Tea",
+      "18 Count"), inconsistent capitalisation, no clean category grammar to lean on.
+
+  aisles:
+    columns: [aisle_id, aisle]
+    keys: [aisle_id]
+    row_count: null
+
+  departments:
+    columns: [department_id, department]
+    keys: [department_id]
+    row_count: null
+
+# ---------------------------------------------------------------------------------------
+# Negative space (S4). Not correspondences; declared so the probe can be scored against
+# them instead of being argued about afterwards.
+# ---------------------------------------------------------------------------------------
+traps:
+  - {table_a: order_products__prior, col_a: add_to_cart_order,
+     table_b: orders, col_b: order_number,
+     note: "both small per-order ordinals starting at 1; position in cart is not order sequence"}
+  - {table_a: products, col_a: department_id,
+     table_b: aisles, col_b: aisle_id,
+     note: "both dense integer id columns from different levels of the same hierarchy"}
+  - {table_a: orders, col_a: user_id,
+     table_b: products, col_b: product_id,
+     note: "both integer identifier columns; ranges overlap enough to trip a value matcher"}

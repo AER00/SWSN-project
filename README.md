@@ -10,21 +10,43 @@ repository is the code base for Milestone 2 onward.
 
 | Milestone | Due | State |
 |---|---|---|
-| M2 — datasets, EDA, repo, report | 09.11.2026 | in progress: scaffolding, dataset triage pending |
+| M2 — datasets, EDA, repo, report | 09.11.2026 | datasets triaged, ground truth transcribed, 600-run ladder benchmark, report drafted |
 | M3 — tools, preprocessing, Kanban | 16.11.2026 | not started (`extension/` scaffolded only) |
 | M4 — first results, novelty | 30.11.2026 | not started |
 | M5 — second results, draft report | 14.12.2026 | not started |
 | M6 — final report, defence | 11–18.01.2027 | not started |
+
+### Headline result
+
+Recovery@1 on twelve documented table pairs, cumulative corruption ladder:
+
+| | L0 | L1 header | L2 +values | L3 +noise | L4 +semantic |
+|---|---|---|---|---|---|
+| COMA | 0.958 | 0.431 | 0.431 | 0.431 | 0.431 |
+| SimilarityFlooding | 0.958 | 0.833 | 0.750 | 0.722 | 0.722 |
+| Jaccard | 0.875 | 0.708 | 0.403 | 0.403 | 0.403 |
+| Cupid | 0.847 | 0.292 | 0.208 | 0.292 | 0.292 |
+| DistributionBased | 0.648 | 0.537 | 0.292 | 0.283 | 0.250 |
+
+Header noise costs more than every other dimension combined, and the one genuinely
+cross-lingual correspondence (Olist's Portuguese→English category name) is recovered by no
+matcher at any level. The full write-up is `reports/milestone2-eda.pdf`.
 
 ## Quickstart
 
 ```bash
 make setup               # uv sync + the NLTK corpora Valentine downloads on first use
 make data                # download the Kaggle datasets (public, anonymous access)
-make test                # smoke tests
+make triage              # apply the G1-G5 admission gate -> evaluation/triage.json
+make bench               # 5 matchers x 5 levels x 18 pairs -> evaluation/results_*.csv
+make figures             # reports/figures/*.pdf + *.svg
+make test                # test suite
 make eda                 # execute the notebooks
 make all                 # setup + data + test + eda
 ```
+
+Each target is a thin wrapper over a module (`python -m swsn.<name>`), so anything can be
+run and inspected on its own. `make bench` takes about four minutes.
 
 `make setup` also fetches ~52 MB of NLTK data (`punkt_tab`, `omw-1.4`, `stopwords`,
 `wordnet`) into `~/nltk_data`. Without it the first `Coma` call downloads them itself —

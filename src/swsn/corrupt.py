@@ -344,24 +344,56 @@ class Corrupted:
         return self.rename_map.get(original, original)
 
 
+def level_order(ladder: dict) -> list[str]:
+    """The declared level ids in ladder order (L0, L1, ...), whatever they are named."""
+    return list((ladder.get("levels") or {}).keys())
+
+
 def apply_level(
     df: DataFrame,
     level: str,
     ladder: dict | None = None,
     seed: int = 42,
     column_fraction: float = 0.5,
+    cumulative: bool = False,
 ) -> Corrupted:
-    """Apply every operator declared for ``level`` to a copy of ``df``."""
+    """Apply the operators declared for ``level`` to a copy of ``df``.
+
+    ``cumulative=False`` (the default) applies only that level's operators to the original
+    frame, so each level isolates one dirtiness dimension. That is the mode for
+    *attribution*: it answers "which dimension of dirt breaks which matcher signal".
+
+    ``cumulative=True`` applies every level up to and including ``level``, in declared
+    order, so the result is a genuine ladder — L4 has been renamed *and* reformatted *and*
+    mined *and* translation-shifted. That is the mode for the *degradation curve*.
+
+    Both are needed and they answer different questions; reporting one as if it were the
+    other would be wrong. With attribution-only levels, L2 can score higher than L1 simply
+    because its corruption is not additive, which looks like a bug until you say which mode
+    you ran.
+    """
     ladder = ladder if ladder is not None else load_ladder()
-    specs = parse_level(ladder, level)
+    if cumulative:
+        order = level_order(ladder)
+        if level not in order:
+            raise KeyError(f"level {level!r} not in ladder")
+        specs = [
+            spec
+            for lvl in order[: order.index(level) + 1]
+            for spec in parse_level(ladder, lvl)
+        ]
+        effective_level = level
+    else:
+        specs = parse_level(ladder, level)
+        effective_level = level
     rng = random.Random(seed)
 
     out = df.copy()
     rename_map: dict[str, str] = {}
     applied: list[str] = []
 
-    if level == "L0" or not specs:
-        return Corrupted(out, level, rename_map, applied)
+    if not specs:
+        return Corrupted(out, effective_level, rename_map, applied)
 
     def merge_renames(mapping: dict[str, str]) -> None:
         """Compose renames so the map always goes original -> final.
@@ -387,9 +419,16 @@ def apply_level(
             out, mapping = HEADER_OPS[spec.id](out, rng, spec.params)
             merge_renames(mapping)
         elif spec.id in VALUE_OPS:
-            cols = [c for c in out.columns if rng.random() < column_fraction]
-            for col in cols:
-                out[col] = VALUE_OPS[spec.id](out[col], rng, spec.params)
+            # Indexed by position, not by label. A header operator (duplicate_header, and
+            # anything after it in cumulative mode) can leave two columns sharing a name,
+            # and `out[name]` then returns a two-column frame instead of a series — which
+            # crashed the whole run with "cannot assemble with duplicate keys" far from the
+            # operator that caused it.
+            positions = [
+                i for i in range(out.shape[1]) if rng.random() < column_fraction
+            ]
+            for i in positions:
+                out.isetitem(i, VALUE_OPS[spec.id](out.iloc[:, i], rng, spec.params))
         else:
             # Declared but not implemented yet — fail loudly rather than silently
             # producing a level that is weaker than the config claims.
@@ -399,7 +438,7 @@ def apply_level(
             )
         applied.append(spec.id)
 
-    return Corrupted(out, level, rename_map, applied)
+    return Corrupted(out, effective_level, rename_map, applied)
 
 
 # ------------------------------------------------------------------- integrity check

@@ -81,8 +81,9 @@ metrics:
 one_to_one: [false, true]
 
 headline:
-  # The number the project is judged on, beyond P/R/F1.
-  - recovery_at_k                # of K documented correspondences, how many in top-k
+  # The number the project is judged on, beyond P/R/F1: of the documented
+  # correspondences, how many the matcher puts in the top-k for their source column.
+  metric: recovery_at_k
   recovery_k: [1, 3]
 
 # ---------------------------------------------------------------------------------
