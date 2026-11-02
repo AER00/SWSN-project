@@ -1,0 +1,157 @@
+# Dataset registry.
+#
+# Every dataset used by the project is declared here. `make data` downloads each entry,
+# verifies its checksum (once recorded) and writes the files to data/raw/<id>/.
+#
+# Fields
+#   id            short local name, used as the folder and the key everywhere else
+#   class         c_doc (documented multi-table) | c_nat (independent single tables)
+#   domain        used for the "variety" argument in the report
+#   kaggle_slug   owner/dataset on Kaggle; must be a public *Dataset* (competitions need auth)
+#   version       kagglehub version number, pinned after triage
+#   sha256        per-file checksums, filled after the first download
+#   licence       recorded verbatim from the dataset page, with a link
+#   status        candidate -> admitted | dropped (with a reason)
+#
+# Do not invent entries: a dataset is admitted only after the triage gate in
+# milestone2-plan.md §1.1 has been applied to the downloaded files.
+
+schema_version: 1
+updated: 2026-11-02
+
+datasets:
+  # ---------------------------------------------------------------- C-doc candidates
+  - id: olist
+    class: c_doc
+    domain: e-commerce
+    kaggle_slug: olistbr/brazilian-ecommerce
+    version: "2"
+    sha256:
+      olist_customers_dataset.csv: 983a422239e1712ded753b3bf9ecf47dc73f144d306029dcfa99e70a226883d2
+      olist_geolocation_dataset.csv: b514f6fc991b9566aeba02aa5d67e2c3630f034b60a0e05aa0d082a3b66d88d6
+      olist_order_items_dataset.csv: 0bc4d068c4fe38cbb01bd90e8746e3c613fe7b4baef75fab7b0e329701c3e279
+      olist_order_payments_dataset.csv: 4f713964f2815dbbaa40b9488268c55aac3627bfce5aa96cf58d1f3616de3cc0
+      olist_order_reviews_dataset.csv: 012b61c7593e34f51fa614efdf802b9c7056ce6aae5307ddb93236e7cfc797d7
+      olist_orders_dataset.csv: 8df58ef3d2d7e9944010f7beecd9b75367f5588ec6e3c91cec19ae3345ef9ecf
+      olist_products_dataset.csv: 3e6569628a17fbc75fd206ee357b59e20364b9afa90f5b6cd5b4d624c58aa9cc
+      olist_sellers_dataset.csv: 1f643d2b950373b85735e7794b20986f528d7a000432e7c6f9bcbb44d0846a0e
+      product_category_name_translation.csv: a81f0d1f27b27e7293f761bc79e3ce8f348ee39c4b3ed3e49bde38f478586278
+    licence: null          # reported as CC BY-NC-SA 4.0 — confirm on the dataset page before publishing
+    status: candidate
+    notes: >
+      9 CSVs with a published data-schema section. Primary C-doc candidate: renamed and
+      cross-lingual columns (PT/EN category names), many-to-one translation table,
+      zip-prefix geolocation joins, one large geolocation table that needs sampling.
+      Downloaded anonymously on 2026-11-02 (kagglehub, version 2) — no credentials needed.
+
+  - id: instacart
+    class: c_doc
+    domain: grocery
+    kaggle_slug: psparks/instacart-market-basket-analysis
+    version: null
+    sha256: {}
+    licence: null
+    status: candidate
+    notes: >
+      6 CSVs, documented hierarchy orders -> order_products -> products -> aisles,
+      departments. Small and fast; good first probe. Verify the slug is a Dataset
+      upload, not the original competition.
+
+  - id: movielens
+    class: c_doc
+    domain: movies
+    kaggle_slug: grouplens/movielens-25m-dataset
+    version: null
+    sha256: {}
+    licence: null
+    status: candidate
+    notes: >
+      6 CSVs, documented. links.csv maps movieId -> imdbId/tmdbId, which enables a
+      controlled cross-dataset discovery scenario. Optional (time permitting).
+
+  # ---------------------------------------------------------------- C-nat candidates
+  - id: craigslist_cars
+    class: c_nat
+    domain: used-cars
+    kaggle_slug: austinreese/craigslist-carstrucks-data
+    version: null
+    sha256: {}
+    licence: null
+    status: candidate
+    notes: Large, famously messy free-text and mixed-type columns.
+
+  - id: cardekho_vehicles
+    class: c_nat
+    domain: used-cars
+    kaggle_slug: nehalbirla/vehicle-dataset-from-cardekho
+    version: null
+    sha256: {}
+    licence: null
+    status: candidate
+    notes: Structured counterpart to craigslist_cars; pair for the used-cars domain.
+
+  - id: airbnb_nyc
+    class: c_nat
+    domain: housing
+    kaggle_slug: dgomonov/new-york-city-airbnb-open-data
+    version: null
+    sha256: {}
+    licence: null
+    status: candidate
+    notes: Pair with Melbourne housing or King County sales.
+
+  - id: melbourne_housing
+    class: c_nat
+    domain: housing
+    kaggle_slug: anthonypino/melbourne-housing-market
+    version: null
+    sha256: {}
+    licence: null
+    status: candidate
+
+  - id: linkedin_jobs
+    class: c_nat
+    domain: jobs
+    kaggle_slug: arshkon/linkedin-job-postings
+    version: null
+    sha256: {}
+    licence: null
+    status: candidate
+    notes: Multi-file job postings; also a candidate for a P-grain pair.
+
+  - id: ds_salaries
+    class: c_nat
+    domain: jobs
+    kaggle_slug: ruchi798/data-science-job-salaries
+    version: null
+    sha256: {}
+    licence: null
+    status: candidate
+
+  - id: heart_failure
+    class: c_nat
+    domain: health
+    kaggle_slug: fedesoriano/heart-failure-prediction
+    version: null
+    sha256: {}
+    licence: null
+    status: candidate
+
+  - id: diabetes
+    class: c_nat
+    domain: health
+    kaggle_slug: iammustafatz/diabetes-prediction-dataset
+    version: null
+    sha256: {}
+    licence: null
+    status: candidate
+
+# Table pairs are declared separately once triage is complete: which table from A is
+# matched against which table from B, the pair type (P-natural / P-grain / P-split), and
+# the one-sentence rationale for why the two tables would be related in practice.
+pairs: []
+# - id: olist_orders__payments
+#   a: { dataset: olist, table: olist_orders_dataset }
+#   b: { dataset: olist, table: olist_order_payments_dataset }
+#   pair_type: p_grain
+#   rationale: "one order can be settled by several payment rows"

@@ -1,0 +1,30 @@
+# environment
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+
+# data — never committed, see data/README.md
+data/raw/
+data/processed/
+data/synthetic/
+*.csv
+*.parquet
+!ground_truth/gt/*.csv
+
+# notebooks
+.ipynb_checkpoints/
+reports/executed/
+
+# report build artefacts
+reports/*.aux
+reports/*.log
+reports/*.out
+reports/*.toc
+
+# OS
+.DS_Store

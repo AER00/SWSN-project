@@ -1,0 +1,120 @@
+# Evaluation protocol.
+#
+# This file is the frozen design for the M2 probe and everything that follows. It exists so
+# that the metric set, the matcher list and the reporting rules cannot be adjusted once
+# results are known. Changing it after M4 invalidates the results — add a new version
+# instead and say so in the report.
+#
+# status: provisional until 07.11.2026, then frozen (v1).
+
+version: 1
+status: provisional
+frozen_on: null          # set to 2026-11-07 when the design is locked
+owner: "Ashley Jurga (infrastructure)"
+
+seed: 42
+
+sampling:
+  mode: join_aware                  # sample on a shared key, never per table
+  max_rows_per_table: 5000          # matcher runtime guard; recorded in every results table
+  distinct_values_for_similarity: 1000
+  sample_seed: 42
+  # Why: independently taking the first N rows of two related tables gives disjoint key
+  # sets, so value overlap collapses and a trivially matched key looks like a trap.
+  # See docs/findings.md (2026-11-02) and swsn.sampling.
+
+# ---------------------------------------------------------------------------------
+# What is being matched
+# ---------------------------------------------------------------------------------
+sets:
+  c_doc:                            # documented multi-table datasets, GT from docs
+    - olist
+    - instacart
+    - movielens                      # optional; drop first if time is short
+  c_nat: []                          # filled during triage (03.11), independent uploads
+  c_syn:                             # derived copies of c_doc, GT preserved
+    levels: [L0, L1, L2, L3, L4]
+    sidedness: one                   # corrupt table A only; table B stays clean
+    source_sets: [olist, instacart]
+
+# ---------------------------------------------------------------------------------
+# Matchers — all five built-ins; parameters verified against the installed version
+# ---------------------------------------------------------------------------------
+matchers:
+  - id: coma
+    class: valentine.algorithms.Coma
+    params: { use_instances: true }
+  - id: cupid
+    class: valentine.algorithms.Cupid
+    params: {}
+  - id: distribution_based
+    class: valentine.algorithms.DistributionBased
+    params: {}
+  - id: jaccard
+    class: valentine.algorithms.JaccardDistanceMatcher
+    params: {}
+  - id: similarity_flooding
+    class: valentine.algorithms.SimilarityFlooding
+    params: {}
+
+# ---------------------------------------------------------------------------------
+# Ground-truth strata. Aggregate scores are dominated by S1 and must never be reported
+# alone — see milestone2-plan.md §1.5.
+# ---------------------------------------------------------------------------------
+strata:
+  S1: "documented key, near-identical column name"
+  S2: "same concept, materially different name (rename, abbreviation, translation)"
+  S3: "same concept, different format / unit / grain"
+  S4: "trap — similar name or type, different meaning; a negative"
+
+# ---------------------------------------------------------------------------------
+# Metrics. one_to_one: false is the raw matcher output; true applies Valentine's
+# Hungarian assignment. Both are reported.
+# ---------------------------------------------------------------------------------
+metrics:
+  - precision
+  - recall
+  - f1
+  - precision_top_10_percent
+  - mean_reciprocal_rank
+  - recall_at_size_of_ground_truth
+one_to_one: [false, true]
+
+headline:
+  # The number the project is judged on, beyond P/R/F1.
+  - recovery_at_k                # of K documented correspondences, how many in top-k
+  recovery_k: [1, 3]
+
+# ---------------------------------------------------------------------------------
+# Reporting rules — non-negotiable
+# ---------------------------------------------------------------------------------
+reporting:
+  granularity: [table_pair, stratum, matcher]
+  runtime_warm_up_excluded: true     # first Coma call pays ~26 s of NLTK setup
+  aggregate_f1: allowed_only_with_strata
+  report_per_stratum_counts: true
+  report_runtime_seconds: true
+  report_sample_sizes: true
+  report_destroyed_gt_pairs_per_level: true
+
+# ---------------------------------------------------------------------------------
+# Non-goals. Doing any of these here turns EDA into results and steals M4's material.
+# ---------------------------------------------------------------------------------
+non_goals:
+  - threshold tuning or search
+  - adding or modifying matchers
+  - preprocessing variants beyond the empty baseline
+  - per-domain hyper-parameter selection
+  - statistical significance testing between matchers
+
+# ---------------------------------------------------------------------------------
+# M4 additions (declared now, executed later) — the extension is evaluated on the same
+# sets with the same metrics, plus a per-dimension ablation.
+# ---------------------------------------------------------------------------------
+extension_ablation:
+  switch_off_one_at_a_time:
+    - case_and_punctuation
+    - dates
+    - numbers_and_units
+    - sentinels_and_nulls
+  compare_against: [valentine.Coma, valentine.JaccardDistanceMatcher]
