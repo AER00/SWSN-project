@@ -69,11 +69,13 @@ NOTEBOOKS["00_dataset_triage"] = notebook("00 Dataset Triage", [
     md("""
 # 00 Dataset triage
 
-Every candidate is scored against the G1–G5 admission gate from the plan. A dataset is used
+Candidates are scored against the G1–G5 admission gate from the plan. A dataset is used
 only if all five pass; a drop is recorded with the reason it failed, not just removed.
 
-The point of doing this in code rather than in a paragraph is that the gate has to be
-applied to every candidate *before* any of them is used.
+**Scope:** the full gate has been run on the two C-doc datasets (Olist, Instacart), which
+need schema files and hand-identified correspondences for G3. The six C-nat datasets are
+registered with G1 only (slug, licence, checksum) and stay `candidate` until G3/G4 are
+checked after annotation. MovieLens was dropped (HTTP 403).
 """),
     code(SETUP),
     md("## The registry"),
@@ -108,7 +110,7 @@ The dataset page renders its metadata sidebar client-side, so fetching the HTML 
 only the title. `https://www.kaggle.com/api/v1/datasets/view/<owner>/<slug>` returns JSON
 with `licenseName`, anonymously. Every licence above was read from there.
 """),
-    md("## Gate results for the admitted datasets"),
+    md("## Gate results (C-doc datasets only)"),
     code("""
 import json, pathlib
 path = pathlib.Path("../evaluation/triage.json")
@@ -360,10 +362,11 @@ print(f"{len(results)} runs, {int((results.status != 'ok').sum())} errors")
 results.groupby(["matcher", "status"]).size().unstack(fill_value=0)
 """),
     md("""
-## Recovery@1 at L0, by matcher
+## Recovery@1 by level, by matcher (attribution mode)
 
-Before any corruption: how much of the documented structure is found by each matcher on the
-original data.
+Each level applies only its own operators to the original data, so levels do not stack and
+a later level can recover (COMA: 0.542 at L1, back to 0.958 at L2). L0 is the uncorrupted
+baseline. Cumulative results are in notebook 06.
 
 The `recovery_at_*_degenerate` flags mark runs where the target table has so few columns
 that top-k contains everything. Those runs are excluded from the means — a column of 1.0s
@@ -438,15 +441,27 @@ display(SVG(filename="../reports/figures/f3_degradation.svg"))
 display(SVG(filename="../reports/figures/f4_strata_coma.svg"))
 """),
     md("""
+## Attribution mode, for comparison
+
+Each level on its own (not stacked). Per-operator ablation (one operator at a time) is not
+run yet; it is planned for M3/M4.
+"""),
+    code("""
+attribution = pd.read_csv("../evaluation/results_attribution.csv")
+summary(attribution).to_string()
+"""),
+    md("""
 ## What it shows
 
-Header noise (L1) costs more than every other dimension combined. COMA drops from 0.958 to
-0.431 the moment columns are renamed, abbreviated and translated, and the value-format
-levels after it add nothing further — once the names are gone, they were the only signal
-COMA had left that mattered.
+For the name-based matchers (COMA, Cupid) header noise (L1) accounts for most of the loss; for Jaccard and DistributionBased the value levels cost more. COMA (with instance values) drops from 0.958 to
+0.542 the moment columns are renamed, abbreviated and translated, and loses a further 0.14
+over the value levels.
 
 And by stratum: **the S3 correspondence — the one genuine cross-lingual pair — is recovered
-by no matcher at any level, at 0.0 throughout**, while S1 sits at 1.0 until L1.
+by no matcher at any level, at 0.0 throughout**, while S1 sits at 1.0 until L1 (S1 identical-name keys then halve for COMA).
+
+Caveat: S3 is a single pair, and at k=1 only one of the two correspondences sharing the
+source column can be hit.
 
 That 0.0 is the case for the project's extension. Everything else recovers; this does not.
 """),
