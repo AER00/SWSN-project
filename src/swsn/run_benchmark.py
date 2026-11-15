@@ -49,6 +49,7 @@ def run(
     registry = load_registry(registry_path)
 
     matchers = [m["id"] for m in protocol.get("matchers") or []]
+    matcher_params = {m["id"]: (m.get("params") or {}) for m in protocol.get("matchers") or []}
     levels = list((protocol.get("sets", {}).get("c_syn", {}) or {}).get("levels") or [])
     seed = int(protocol.get("seed", 42))
     max_rows = int((protocol.get("sampling") or {}).get("max_rows_per_table", 5000))
@@ -87,6 +88,7 @@ def run(
                 seed=seed,
                 join_key=pair.join_key,
                 cumulative=(mode == "cumulative"),
+                matcher_params=matcher_params,
             )
             if frame.empty:
                 continue

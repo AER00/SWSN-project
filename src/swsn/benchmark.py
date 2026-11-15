@@ -78,6 +78,7 @@ class PairRun:
             "trap_hits": self.trap_hits,
             "n_predicted": self.n_predicted,
             "n_target_columns": self.n_target_columns,
+            "chance_at_1": 1.0 / self.n_target_columns if self.n_target_columns else None,
             "runtime_s": self.runtime_s,
             "status": self.status,
             "error": self.error,
@@ -137,6 +138,7 @@ def run_pair(
     join_key: tuple[str, str] | None = None,
     ladder: dict | None = None,
     cumulative: bool = False,
+    matcher_params: dict[str, dict] | None = None,
 ) -> pd.DataFrame:
     """Run the full grid for one documented table pair and return tidy results."""
     ladder = ladder if ladder is not None else load_ladder()
@@ -180,12 +182,12 @@ def run_pair(
             )
             for col_a, _, stratum in gt_remapped:
                 run.n_gt_by_stratum[stratum] = run.n_gt_by_stratum.get(stratum, 0) + 1
-            # The matcher is run as (clean B, corrupted A), so A is the target side and its
-            # column count decides whether recovery@k is informative at all (see below).
-            run.n_target_columns = len(df_a.columns)
+            # recovery@k ranks, for each (corrupted) A column, the candidate columns of B, so
+            # B's column count decides whether recovery@k is informative at all (see below).
+            run.n_target_columns = len(df_b_full.columns)
             start = time.perf_counter()
             try:
-                matcher = build_matcher(matcher_id)
+                matcher = build_matcher(matcher_id, (matcher_params or {}).get(matcher_id))
                 # Match clean B against corrupted A, so the orientation is B -> A.
                 results = run_matcher([df_b_full, df_a], matcher, [table_b, table_a])
                 predicted = [(b, a, s) for a, b, s in as_pairs(results)]

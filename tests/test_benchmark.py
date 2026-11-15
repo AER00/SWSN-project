@@ -74,18 +74,18 @@ def test_mode_is_recorded_so_a_table_cannot_be_misread():
 
 def test_degeneracy_flag_fires_when_the_target_is_too_small():
     flagged = drop_degenerate_recovery(_run(["L0"]))
-    # customers has 2 columns, so a top-3 really contains everything
+    # candidates are customers' 2 columns, so a top-3 really contains everything
     assert bool(flagged.iloc[0]["recovery_at_3_degenerate"]) is True
     assert bool(flagged.iloc[0]["recovery_at_1_degenerate"]) is False
 
 
 def test_degeneracy_depends_on_the_target_column_count_not_the_data():
     flagged = drop_degenerate_recovery(_run(["L0"]))
-    assert flagged.iloc[0]["n_target_columns"] == 3  # orders
+    assert flagged.iloc[0]["n_target_columns"] == 2  # customers (B), not orders (A)
     wide = _tables()
-    n = len(wide["orders"])
-    wide["orders"] = pd.concat(
-        [wide["orders"], pd.DataFrame({f"extra_{i}": [0.0] * n for i in range(5)})], axis=1
+    n = len(wide["customers"])
+    wide["customers"] = pd.concat(
+        [wide["customers"], pd.DataFrame({f"extra_{i}": [0.0] * n for i in range(5)})], axis=1
     )
     result = run_pair(
         "toy", "orders", "customers", SCHEMA, wide,
@@ -118,3 +118,18 @@ def test_cumulative_rename_chain_survives_duplicate_headers():
     corrupted = apply_level(_tables()["orders"], "L4", cumulative=True)
     assert len(corrupted.df) == 40
     assert corrupted.applied  # every level's operators ran
+
+
+def test_matcher_params_are_passed_through_to_the_matcher(monkeypatch):
+    seen = {}
+    import swsn.benchmark as bm
+
+    real = bm.build_matcher
+
+    def spy(matcher_id, params=None):
+        seen[matcher_id] = params
+        return real(matcher_id, params)
+
+    monkeypatch.setattr(bm, "build_matcher", spy)
+    _run(["L0"], matcher_params={"jaccard": {"threshold_dist": 0.2}})
+    assert seen["jaccard"] == {"threshold_dist": 0.2}
