@@ -3,7 +3,8 @@
 PY := uv run python
 OFFLINE ?= 0
 
-setup: uv sync nltk
+setup: nltk
+	uv sync
 
 # Valentine's Coma and Cupid download these on first use (~52 MB). Fetching them here
 # keeps the first matcher run fast and makes offline use possible after setup.
@@ -28,7 +29,7 @@ bench:
 figures: bench
 	$(PY) -m swsn.figures
 
-# G1-G5 gate over the admitted datasets -> evaluation/triage.json
+# G1-G5 gate over datasets that have data and a transcribed schema (C-doc only) -> evaluation/triage.json
 triage:
 	$(PY) -m swsn.triage
 
@@ -44,7 +45,7 @@ lint:
 report:
 	@echo "Build reports/milestone2-eda.tex with your LaTeX toolchain; figures live in reports/figures/"
 
-all: setup data test eda
+all: setup data triage bench figures test eda
 
 clean:
 	rm -rf data/raw data/processed data/synthetic .pytest_cache

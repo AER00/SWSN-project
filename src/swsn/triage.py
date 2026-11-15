@@ -192,7 +192,7 @@ def write_triage(results: list[TriageResult], path: str | Path) -> Path:
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Apply the gate to every admitted dataset that has data and a transcribed schema."""
+    """Apply the gate to every registered dataset that has data and a transcribed schema."""
     import argparse
 
     from .registry import load_registry

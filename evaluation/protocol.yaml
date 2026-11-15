@@ -30,7 +30,7 @@ sets:
   c_doc:                            # documented multi-table datasets, GT from docs
     - olist
     - instacart
-    - movielens                      # optional; drop first if time is short
+    # movielens dropped: Kaggle slug returns HTTP 403
   c_nat: []                          # filled during triage (03.11), independent uploads
   c_syn:                             # derived copies of c_doc, GT preserved
     levels: [L0, L1, L2, L3, L4]

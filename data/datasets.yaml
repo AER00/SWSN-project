@@ -13,11 +13,12 @@
 #   licence       recorded verbatim from the dataset page, with a link
 #   status        candidate -> admitted | dropped (with a reason)
 #
-# Do not invent entries: a dataset is admitted only after the triage gate in
-# milestone2-plan.md §1.1 has been applied to the downloaded files.
+# Do not invent entries: a dataset is admitted only after the full triage gate in
+# milestone2-plan.md §1.1 (G1-G5) has been applied to the downloaded files. The C-nat
+# datasets stay `candidate` until G3 (>=3 annotated correspondences) and G4 are checked.
 
 schema_version: 1
-updated: 2026-11-02
+updated: 2026-11-03
 
 datasets:
   # ---------------------------------------------------------------- C-doc candidates
@@ -90,7 +91,7 @@ datasets:
     sha256:
       vehicles.csv: 54c60e20aa494a73f7f9170bff1e38b4800472b767cab8f9dab7da5dcc261a5c
     licence: "CC0: Public Domain"
-    status: admitted
+    status: candidate   # G1 only (slug, licence, checksum); G3/G4 pending annotation
     notes: >
       1.4 GB, 26 columns of genuinely messy free text: description, VIN, paint_color,
       condition, cylinders, drive, size, type are mostly null, and price/odometer are
@@ -109,7 +110,7 @@ datasets:
       "car data.csv": 00b477def120548e583c638b00146982956b80646817901245ef78da9c4b3063
       "car details v4.csv": 6841a81165c2a390d84b361555489e123f739f0e4b2bfe7915e759746b3efe59
     licence: "Database: Open Database, Contents: Database Contents"
-    status: admitted
+    status: candidate   # G1 only (slug, licence, checksum); G3/G4 pending annotation
     notes: >
       Ships four CSVs that are four versions of the same used-car domain under four
       different naming conventions: snake_case (`car data.csv`), lower snake
@@ -125,7 +126,7 @@ datasets:
     sha256:
       AB_NYC_2019.csv: e420db40ff10fcb40efc1b5b1648ee0b18a48f4e4537155cecc59fe95d18783a
     licence: "CC0: Public Domain"
-    status: admitted
+    status: candidate   # G1 only (slug, licence, checksum); G3/G4 pending annotation
     notes: >
       49k rows, 16 columns. Cross-upload partner for melbourne_housing: both describe
       short-term rentals by price, room type and coordinates, but the column names share
@@ -140,7 +141,7 @@ datasets:
       MELBOURNE_HOUSE_PRICES_LESS.csv: 145c1499c13e144c325898d45a3480d0a8a3282a5610563a669576b0870fd07b
       Melbourne_housing_FULL.csv: b0431746ca49a2131ade9a9ce4a7bb2b38bd670bf11981dd62f8e19c0ed660ac
     licence: "CC BY-NC-SA 4.0"
-    status: admitted
+    status: candidate   # G1 only (slug, licence, checksum); G3/G4 pending annotation
     notes: >
       Two files that are a documented projection of one another: FULL has 21 columns,
       LESS has the same keys minus Bedroom2/Bathroom/Car/Landsize/BuildingArea/YearBuilt/
@@ -155,7 +156,7 @@ datasets:
     sha256:
       heart.csv: 948420b084d8a3a0ca42b8419fce9aee175879e43f8aedf712377899a67aa49b
     licence: "Database: Open Database, Contents: © Original Authors"
-    status: admitted
+    status: candidate   # G1 only (slug, licence, checksum); G3/G4 pending annotation
     notes: >
       918 rows, 12 columns, CamelCase names and abbreviated clinical terms
       (ChestPainType, RestingBP, Oldpeak, ST_Slope). Tiny; costs nothing to carry.
@@ -168,7 +169,7 @@ datasets:
     sha256:
       diabetes_prediction_dataset.csv: f233fc470e904201f35310d061cb46ca0a6bc7ca5c3e428b769fb4f87f69929b
     licence: "Data files © Original Authors"
-    status: admitted
+    status: candidate   # G1 only (slug, licence, checksum); G3/G4 pending annotation
     notes: >
       100k rows, 9 columns, snake_case. Cross-upload partner for heart_failure: overlapping
       clinical concepts (age, sex, smoking/bmi, hypertension) under a different naming

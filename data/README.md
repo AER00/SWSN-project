@@ -20,15 +20,15 @@ redistributable.
 
 ## Licensing and attribution
 
-Filled in during triage (03.11.2026). Nothing is used until its licence is recorded here.
+Licences are recorded verbatim in `datasets.yaml`; this table mirrors them. Nothing is used until its licence is recorded.
 
 | id | Dataset | Publisher | Licence | URL |
 |---|---|---|---|---|
-| olist | Brazilian E-Commerce Public Dataset by Olist | Olist | *to record* | https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce |
-| instacart | Instacart Market Basket Analysis | Instacart | *to record* | https://www.kaggle.com/datasets/psparks/instacart-market-basket-analysis |
-| movielens | MovieLens 25M | GroupLens | *to record* | https://www.kaggle.com/datasets/grouplens/movielens-25m-dataset |
+| olist | Brazilian E-Commerce Public Dataset by Olist | Olist | CC BY-NC-SA 4.0 | https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce |
+| instacart | Instacart Market Basket Analysis | Instacart | CC0: Public Domain | https://www.kaggle.com/datasets/psparks/instacart-market-basket-analysis |
+| movielens | MovieLens 25M | GroupLens | not retrievable (dropped, HTTP 403) | https://www.kaggle.com/datasets/grouplens/movielens-25m-dataset |
 
-C-nat entries are added to this table as they pass triage. If a licence forbids
+C-nat entries (6, status `candidate`: licence and checksum recorded in `datasets.yaml`, G3/G4 pending) are added to this table once they pass the full gate. If a licence forbids
 redistribution but permits local research use, that is stated explicitly and the dataset
 stays download-only.
 
