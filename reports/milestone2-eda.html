@@ -71,12 +71,16 @@ rename maps; this is the only class that isolates <em>which</em> dimension of di
 <em>which</em> matcher.
 </p>
 <p>
-Every candidate passed a five-part admission gate (G1 provenance, G2 not in Valentine's
-benchmark, G3 pairing, G4 ≥3 of D1–D7 present, G5 tractability). Eight datasets were
-admitted across four domains: Olist (e-commerce, CC BY-NC-SA 4.0), Instacart (grocery,
-CC0), Craigslist Cars and Cardekho (used cars, CC0 / open database), Airbnb NYC and
-Melbourne Housing (housing), Heart Failure and Diabetes (health). MovieLens was dropped:
-its slug now returns HTTP 403. Eighteen table pairs are declared, each with a rationale.
+Nine Kaggle datasets were registered: three documented (C-doc) candidates and six
+independent-upload (C-nat) candidates. Eight were downloaded, checksummed and had their
+licence recorded; MovieLens was dropped because its slug now returns HTTP 403. The full
+five-part admission gate (G1 provenance, G2 not in Valentine's benchmark, G3 pairing,
+G4 ≥3 of D1–D7 present, G5 tractability) has been applied to the two C-doc datasets, Olist
+(e-commerce, CC BY-NC-SA 4.0) and Instacart (grocery, CC0), and both pass. All EDA and
+benchmark results here cover only these two (15 tables, 12 table pairs). The six C-nat
+datasets (Craigslist Cars, Cardekho, Airbnb NYC, Melbourne Housing, Heart Failure,
+Diabetes) are provisional: G1 is verified, G3 and G4 follow the annotation round.
+Eighteen table pairs are declared, each with a rationale; the 12 C-doc pairs have ground truth.
 </p>
 
 <h2><span class="n">3</span>What "messy" means here</h2>
@@ -110,8 +114,8 @@ derived from it would be worthless.
 </p>
 <figure class="fig-f1">
   <img src="figures/f1_dirtiness.svg" alt="Dirtiness profile">
-  <figcaption><strong>Figure 1.</strong> D1–D7 per table at L0. Sparse on purpose: nine of
-  thirteen tables exhibit at most one dimension, and the three dimensions that matter most
+  <figcaption><strong>Figure 1.</strong> D1–D7 per table at L0. Sparse on purpose: twelve of
+  fifteen tables exhibit at most one dimension, and the three dimensions that matter most
   to a matcher are empty everywhere. Instacart's D3 is structural —
   <code>days_since_prior_order</code> is null for every user's first order.</figcaption>
 </figure>
@@ -137,14 +141,14 @@ without help.
 <h2><span class="n">5</span>Can Valentine see documented relationships?</h2>
 <p>
 Recovery@1 — the share of documented correspondences a matcher places first for their
-source column — on the unmodified data. Pairs whose target table has fewer columns than
+source column — at each ladder level (Table 1). Pairs whose target table has fewer columns than
 <em>k</em> are flagged degenerate and excluded: with two target columns a top-3 contains
 everything, and scoring that as success would have flattered every matcher equally.
 </p>
 
 <table>
 <tr><th>matcher</th><th>L0</th><th>L1 header</th><th>L2 +values</th><th>L3 +noise</th><th>L4 +semantic</th></tr>
-<tr><td>COMA</td><td>0.958</td><td class="hi">0.431</td><td>0.431</td><td>0.431</td><td>0.431</td></tr>
+<tr><td>COMA</td><td>0.958</td><td class="hi">0.542</td><td>0.486</td><td>0.486</td><td>0.403</td></tr>
 <tr><td>SimilarityFlooding</td><td>0.958</td><td class="hi">0.833</td><td>0.750</td><td>0.722</td><td>0.722</td></tr>
 <tr><td>Jaccard</td><td>0.875</td><td class="hi">0.708</td><td>0.403</td><td>0.403</td><td>0.403</td></tr>
 <tr><td>Cupid</td><td>0.847</td><td class="hi">0.292</td><td>0.208</td><td>0.292</td><td>0.292</td></tr>
@@ -152,7 +156,7 @@ everything, and scoring that as success would have flattered every matcher equal
 </table>
 <p class="note">
 Table 1. Recovery@1, cumulative ladder, 12 documented table pairs, 5,000-row join-aware
-samples, seed 42. 300 runs per mode; DistributionBased raised in 10 of its 60 runs and is
+samples, seed 42. 300 runs per mode; DistributionBased raised in 10 of its 60 cumulative runs (12 of 60 in attribution mode) and is
 excluded from cross-matcher comparison.
 </p>
 
@@ -169,21 +173,22 @@ degradation curve in Table 1 and Figure 3.
 <div class="two">
   <figure>
     <img src="figures/f3_degradation.svg" alt="Degradation curve">
-    <figcaption><strong>Figure 3.</strong> Recovery@1 as corruption accumulates. The entire
-    loss happens between L0 and L1.</figcaption>
+    <figcaption><strong>Figure 3.</strong> Recovery@1 as corruption accumulates. For COMA, Cupid
+    and SimilarityFlooding the largest single drop is between L0 and L1; Jaccard and
+    DistributionBased lose more at L2.</figcaption>
   </figure>
   <figure>
     <img src="figures/f4_strata_coma.svg" alt="Recovery by stratum">
-    <figcaption><strong>Figure 4.</strong> COMA by stratum. S1 freebies and S2 renamed keys
-    survive to L1; the S3 translation is recovered at no level.</figcaption>
+    <figcaption><strong>Figure 4.</strong> COMA by stratum. S2 renamed keys survive to L1
+    (S1 identical-name keys halve); the S3 translation is recovered at no level.</figcaption>
   </figure>
 </div>
 
 <p>
-Header noise costs more than every other dimension combined. COMA falls from 0.958 to 0.431
-the moment columns are renamed, abbreviated and translated, and the value-format level after
-it adds nothing — once the names are gone, the name channel was the only signal it had that
-mattered. Value-based matchers tell the complementary story: Jaccard is unaffected by
+For the name-based matchers (COMA, Cupid) header noise accounts for most of the loss; for Jaccard and DistributionBased the value levels cost more. COMA (run with
+instance values) falls from 0.958 to 0.542 the moment columns are renamed, abbreviated and
+translated — the identical-name keys it ranked first are the ones that break — and loses a
+further 0.14 over the value levels. Value-based matchers tell the complementary story: Jaccard is unaffected by
 renaming and loses its recovery at L2, when numbers acquire thousands separators and
 decimal commas. The two failure modes are almost disjoint, which is the strongest available
 argument that a matcher using only one channel cannot be robust.
@@ -191,10 +196,10 @@ argument that a matcher using only one channel cannot be robust.
 <p>
 The stratified view is where the project's case lives: <strong>the one genuinely
 cross-lingual correspondence is recovered by no matcher, at no corruption level — 0.0
-throughout.</strong> Every other stratum recovers; this one does not. It is not a noise
+throughout.</strong> The other strata are at least partly recovered by some matcher; this one never is. It is not a noise
 problem, a threshold problem or a sampling artefact: the name channel ranks the
 identical-name column first, correctly, and the value channel sees disjoint vocabularies.
-Neither channel can promote it, and no amount of tuning changes that.
+Neither channel can promote it,; whether tuning could change that is untested.
 </p>
 
 <h2><span class="n">7</span>Implications and limits</h2>
@@ -219,7 +224,7 @@ Neither channel can promote it, and no amount of tuning changes that.
 <p class="foot">
 Artifacts: <code>data/datasets.yaml</code> (registry and 18 pairs) ·
 <code>ground_truth/schema/</code> (transcribed, cited) · <code>evaluation/protocol.yaml</code>
-(frozen design) · <code>evaluation/results_{attribution,cumulative}.csv</code> (600 runs) ·
+(provisional design) · <code>evaluation/results_{attribution,cumulative}.csv</code> (600 runs) ·
 <code>notebooks/00–06</code> (all executable) · <code>docs/findings.md</code> (§6 findings,
 including four profiler defects found and fixed).
 Reproduce with <code>make setup data triage bench figures eda</code>.

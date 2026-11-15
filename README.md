@@ -22,15 +22,15 @@ Recovery@1 on twelve documented table pairs, cumulative corruption ladder:
 
 | | L0 | L1 header | L2 +values | L3 +noise | L4 +semantic |
 |---|---|---|---|---|---|
-| COMA | 0.958 | 0.431 | 0.431 | 0.431 | 0.431 |
+| COMA | 0.958 | 0.542 | 0.486 | 0.486 | 0.403 |
 | SimilarityFlooding | 0.958 | 0.833 | 0.750 | 0.722 | 0.722 |
 | Jaccard | 0.875 | 0.708 | 0.403 | 0.403 | 0.403 |
 | Cupid | 0.847 | 0.292 | 0.208 | 0.292 | 0.292 |
 | DistributionBased | 0.648 | 0.537 | 0.292 | 0.283 | 0.250 |
 
-Header noise costs more than every other dimension combined, and the one genuinely
-cross-lingual correspondence (Olist's Portuguese→English category name) is recovered by no
-matcher at any level. The full write-up is `reports/milestone2-eda.pdf`.
+For name-based matchers (COMA, Cupid) header noise is most of the loss (COMA 0.958→0.542, Cupid 0.847→0.292), while value-based
+matchers (Jaccard, DistributionBased) lose most at the value levels. The one genuinely cross-lingual correspondence (Olist's
+Portuguese→English category name) is not recovered at k=1 by any matcher (single pair; see docs/findings.md). The full write-up is `reports/milestone2-eda.pdf`.
 
 ## Quickstart
 
@@ -38,7 +38,7 @@ matcher at any level. The full write-up is `reports/milestone2-eda.pdf`.
 make setup               # uv sync + the NLTK corpora Valentine downloads on first use
 make data                # download the Kaggle datasets (public, anonymous access)
 make triage              # apply the G1-G5 admission gate -> evaluation/triage.json
-make bench               # 5 matchers x 5 levels x 18 pairs -> evaluation/results_*.csv
+make bench               # 5 matchers x 5 levels x 12 pairs with ground truth (18 declared) -> evaluation/results_*.csv
 make figures             # reports/figures/*.pdf + *.svg
 make test                # test suite
 make eda                 # execute the notebooks
@@ -68,9 +68,9 @@ data/            dataset registry (datasets.yaml), download script, raw data (gi
 src/swsn/        profiling, audit, corruption, probe and diagnostic modules
 src/swsn/extension/  the M3/M4 deliverable: canonicalisation + NormalisedComa matcher
 corruption/      declared corruption operators per ladder level
-evaluation/      frozen evaluation protocol and baseline definitions
+evaluation/      provisional evaluation protocol and baseline definitions
 ground_truth/    transcribed schemas, labelled pairs, annotation guide, agreement tooling
-notebooks/       the six EDA notebooks
+notebooks/       the seven EDA notebooks (00–06)
 reports/         the 2-page EDA report and exported figures
 docs/            tool inventory and extended bibliography
 tests/           smoke tests

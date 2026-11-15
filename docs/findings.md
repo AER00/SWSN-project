@@ -95,7 +95,7 @@ will happen to any downstream code that addresses columns by name after L1.
 
 **Attribution and cumulative modes are not interchangeable.** Each level applies only its
 own operators to the original frame, so L2's corruption is not added on top of L1's — which
-means COMA scores *higher* at L2 (0.958) than at L1 (0.431). That looks like a bug and is
+means COMA scores *higher* at L2 (0.958) than at L1 (0.542). That looks like a bug and is
 not: L1 renames headers, L2 reformats values. Both modes are now implemented
 (`apply_level(..., cumulative=)`), both are written to separate CSVs, and the report has to
 say which one a table is showing.
@@ -106,16 +106,19 @@ samples).** Recovery@1 by level:
 | level | COMA | Cupid | Jaccard | SimFlooding |
 |---|---|---|---|---|
 | L0 | 0.958 | 0.847 | 0.917 | 0.958 |
-| L1 header | **0.431** | **0.292** | **0.708** | **0.833** |
-| L2 +values | 0.431 | 0.208 | 0.403 | 0.750 |
-| L3 +noise | 0.431 | 0.292 | 0.403 | 0.722 |
-| L4 +semantic | 0.431 | 0.292 | 0.403 | 0.722 |
+| L1 header | **0.542** | **0.292** | **0.708** | **0.833** |
+| L2 +values | 0.486 | 0.208 | 0.403 | 0.750 |
+| L3 +noise | 0.486 | 0.292 | 0.403 | 0.722 |
+| L4 +semantic | 0.403 | 0.292 | 0.403 | 0.722 |
 
-Header noise costs more than every other dimension combined. And by stratum, the S3
+(Table regenerated 2026-11-03 after two benchmark fixes, see below. Jaccard L0 is 0.875 here, as in the report; an earlier draft of this table showed 0.917, which no current run reproduces.)
+
+For the name-based matchers (COMA, Cupid) header noise accounts for most of the loss; for Jaccard and DistributionBased the value levels cost more. And by stratum, the S3
 correspondence (`product_category_name` ↔ `product_category_name_english`, the one genuine
 cross-lingual pair) is recovered **by no matcher at any level** — 0.0 across the board —
-while S1 sits at 1.0 until L1 and S2 at 1.0 for COMA. The extension's whole case is in that
-0.0.
+while S1 sits at 1.0 until L1 and S2 at 1.0 for COMA. Caveat: at k=1 only one of the two correspondences sharing `product_category_name` can be
+hit, so S3 is 0 even for matchers right about S1; this is one pair in one dataset, and the
+result needs rechecking at k=2 before it is used as the extension's case.
 
 **The protocol file had never been parsed.** `headline:` was a YAML list with a
 `recovery_k:` mapping key appended, which is a parse error. It survived because nothing
@@ -170,7 +173,7 @@ includes `PrecisionTop10Percent` and `MRR` and why the protocol forbids reportin
 
 **Steady-state runtime is not the constraint.** After warm-up, a 8-column × 5-column pair
 at 5,000 rows takes 0.15 s with Coma and 0.42 s with `JaccardDistanceMatcher` in the earlier
-cold run. The full ladder (3 datasets × 5 matchers × 5 levels) is feasible in a notebook.
+cold run. The full ladder (2 datasets × 5 matchers × 5 levels) is feasible in a notebook.
 
 **Licence not yet confirmed.** The Olist dataset page did not render its licence field to
 our fetcher. Recorded as `null` in `data/datasets.yaml` with a note — confirm before the
@@ -190,3 +193,17 @@ with `make data OFFLINE=1`.
 **What happened.** ... (numbers, not adjectives)
 **What it changes.** ... (code, protocol, or plan)
 ```
+
+## 2026-11-03 — benchmark fixes found in review
+
+- **Matcher params were never passed.** `protocol.yaml` sets `use_instances: true` for COMA, but
+  `run_pair` built every matcher with defaults, so COMA ran name-only (Valentine's default is
+  `use_instances=False`). Params are now passed through (`matcher_params`). Effect on COMA
+  (cumulative recovery@1): L1 0.431→0.542, L2/L3 0.431→0.486, L4 0.431→0.403. Other matchers are
+  unchanged. The earlier reading "value levels add nothing for COMA" was an artefact of it never
+  seeing values.
+- **`n_target_columns` counted the wrong table.** recovery@k ranks B's columns for each A column,
+  but the degenerate flag counted A's. It now counts B's, and the results carry `chance_at_1`
+  (1/|B|), since with a 2-column B recovery@1 has a 50% chance baseline.
+- Still open: L4 operators are probably near no-ops on these tables; one seed and 12 pairs, no
+  confidence intervals; S3 is one pair and is capped at k=1 by the shared source column.
