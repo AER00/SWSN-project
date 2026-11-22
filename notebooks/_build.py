@@ -931,6 +931,112 @@ make eda
 ])
 
 
+NOTEBOOKS["tool_pyyaml"] = notebook("tool_pyyaml", [
+    md("""
+# PyYAML — introductory notebook
+
+M3 requires a minimal notebook per selected tool. This one covers **PyYAML**, used because
+the project treats configuration as data: the dataset registry, the evaluation protocol
+and the corruption ladder are YAML files that can be reviewed in a diff instead of being
+buried in code.
+
+The notebook loads the registry, validates the ladder, and shows that a bad file fails
+loudly instead of silently producing an empty configuration.
+"""),
+    code(SETUP),
+    md("""
+## Load the dataset registry
+
+`load_registry` reads `data/datasets.yaml`, parses every dataset and pair, and rejects
+duplicate ids. Keeping the checks in the loader means a typo in the YAML is an error at
+load time, not a missing row three notebooks later.
+"""),
+    code("""
+from swsn.registry import load_registry
+
+registry = load_registry("../data/datasets.yaml")
+print("datasets:", len(registry.datasets), "| pairs:", len(registry.pairs))
+print([d.id for d in registry.datasets.values()])
+"""),
+    code("""
+dataset = registry.datasets["heart_failure"]
+print("class   :", dataset.cls.value)
+print("slug    :", dataset.kaggle_slug)
+print("licence :", dataset.licence)
+print("files   :", list(dataset.sha256))
+"""),
+    md("""
+## Load and validate the ladder
+
+The ladder is a mapping from level id to a dimension and a list of operators. `load_ladder`
+is a thin `yaml.safe_load`; the validation happens when a level is parsed, so an unknown
+level or a malformed operator raises instead of returning `None`.
+"""),
+    code("""
+from swsn.corrupt import level_order, load_ladder, parse_level
+
+ladder = load_ladder("../corruption/ladder.yaml")
+for level in level_order(ladder):
+    operators = [spec.id for spec in parse_level(ladder, level)]
+    print(f"{level}: {len(operators):2d} operators  {operators}")
+"""),
+    md("""
+L0 is deliberately empty: the uncorrupted baseline has no operator, and that is visible in
+the data rather than implied by a comment.
+"""),
+    md("""
+## Fail loudly on a bad entry
+
+The important behaviour is the failure, not the success. A schema file without `tables`
+is rejected by `load_schema` with the path in the message, so a broken config names the
+file that broke.
+"""),
+    code("""
+import pathlib
+import tempfile
+
+from swsn.schema_doc import load_schema
+
+with tempfile.TemporaryDirectory() as tmp:
+    bad = pathlib.Path(tmp) / "bad.yaml"
+    bad.write_text("dataset: toy\\n", encoding="utf-8")
+    try:
+        load_schema(bad)
+    except ValueError as exc:
+        print(f"{type(exc).__name__}: {exc}")
+"""),
+    md("""
+## Safe loading
+
+`yaml.safe_load` constructs only plain Python types (dict, list, str, int, float, bool,
+None). `yaml.load` without a loader can instantiate arbitrary objects, which is why the
+project never uses it on files that come from outside the repository.
+"""),
+    code("""
+import yaml
+
+sample = \"\"\"\\
+version: "1"
+threshold: 0.15
+levels: [L0, L1]
+\"\"\"
+values = yaml.safe_load(sample)
+print(values)
+print({key: type(value).__name__ for key, value in values.items()})
+"""),
+    md("""
+Note `version: "1"` stays a string: the registry quotes versions on purpose, because
+`version: 1.0` would load as a float and compare unequal to the string "1".
+
+## Reproducing
+
+```bash
+make eda
+```
+"""),
+])
+
+
 def write_all() -> None:
     for name, nb in NOTEBOOKS.items():
         path = HERE / f"{name}.ipynb"
