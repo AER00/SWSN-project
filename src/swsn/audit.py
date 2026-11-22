@@ -1,4 +1,4 @@
-"""D9 — documentation-versus-data audit (milestone2-plan.md §3.1, §3.3).
+"""D9 — documentation-versus-data audit.
 
 The published schema is our ground truth, so it has to be checked against the files
 before it is trusted. A documented column that is absent, a documented key that is not

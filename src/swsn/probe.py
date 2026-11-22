@@ -1,7 +1,6 @@
 """Valentine probe — does the matcher recover relationships that are documented to exist?
 
-Capped on purpose (milestone2-plan.md §3.5): fixed matcher list, fixed metric set, no
-tuning, no preprocessing variants. The full ladder evaluation is M4.
+The probe uses the matchers and metrics defined in ``evaluation/protocol.yaml``.
 """
 
 from __future__ import annotations

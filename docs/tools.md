@@ -14,6 +14,7 @@ completeness but are excluded from the introductory-notebook requirement.
 |---|---|---|---|
 | Python 3.13 | implementation language | Valentine requires `>=3.12,<3.16`; 3.13 has wheels for every dependency (3.15 lacks PuLP wheels on macOS) | M2 |
 | uv | environment and dependency management | resolves and locks the whole graph; installs the required interpreter; `uv sync` reproduces the environment from `uv.lock` | M2 |
+| Make | entry points for common tasks | gives all team members the same commands for setup, data retrieval, notebook execution and tests | M2 |
 | Git + GitHub | version control and hosting | public repository is a graded deliverable | M2 |
 
 ## Data handling
@@ -24,14 +25,25 @@ completeness but are excluded from the introductory-notebook requirement.
 | PyArrow / Parquet | intermediate storage | sampling and canonicalised tables reload fast; preserves inferred types exactly | M2 |
 | kagglehub | dataset download | public Dataset downloads work anonymously; pins versions | M2 |
 | PyYAML | configuration | dataset registry, evaluation protocol and the ladder are data, not code — reviewable in a diff | M2 |
-| rapidfuzz | fuzzy matching | clustering categorical variants (D5) and cheap name similarity in the D8 diagnostic | M2 |
+| rapidfuzz | string comparison | illustrates how tokenisation and case affect similarity on noisy labels and category values | M3 |
 
 ## Matching
 
 | Tool | Role | Why | Milestone |
 |---|---|---|---|
 | valentine | the object of study | five built-in matchers, documented metrics, `BaseMatcher` extension point — the project's core dependency | M2 |
-| scikit-learn *(tentative)* | optional numeric helpers | only if normalisation needs vectorised preprocessing; do not add until used | M3 |
+
+## Method and preprocessing choices
+
+COMA is the baseline because it combines column-name similarity with evidence from
+cell values. Olist and Instacart have documented relationships for evaluating
+matches, while the corruption ladder lets us vary header and value noise on the
+same table pairs. Jaccard provides a value-based comparison for the extension.
+
+NormalisedComa combines COMA's name similarity with Jaccard overlap on canonical
+value sets. The preprocessing uses explicit, independently switchable rules for
+null tokens, dates, numeric formats and text so each contribution can be evaluated
+on the same inputs. See the [Olist preprocessing demo](extension.md#m3-preprocessing).
 
 ## Analysis and presentation
 
@@ -61,5 +73,6 @@ Only these need one, and each is short:
 | rapidfuzz | `notebooks/tool_rapidfuzz.ipynb` | ratio vs token-set ratio on column names and category values |
 | PyYAML | `notebooks/tool_pyyaml.ipynb` | load the registry, validate the ladder config, fail loudly on a bad entry |
 
-pandas and matplotlib are assumed background and do not need a tool notebook; they appear
-throughout the EDA notebooks instead.
+The EDA notebooks show [pandas table inventory](../notebooks/01_inventory.ipynb)
+and [plots of dirtiness and match recovery](../notebooks/02_dirtiness.ipynb).
+The [README](../README.md#run-the-notebooks) shows Make and uv setup commands.

@@ -720,15 +720,16 @@ The project uses Valentine as the baseline suite; the extension in
     md("""
 ## Two tables
 
-Loaded through the project's table loader so the path, encoding and sampling match every
-other notebook and the benchmark. Both tables come from Olist and are documented as
-joinable on `order_id`.
+Both Olist tables are documented as joinable on `order_id`. Use the project's table
+loader and sample the same order IDs on both sides, as in the benchmark.
 """),
     code("""
+from swsn.sampling import sample_pair
 from swsn.tables import load_table
 
-orders = load_table("olist", "olist_orders_dataset", data_dir="../data", nrows=5000)
-payments = load_table("olist", "olist_order_payments_dataset", data_dir="../data", nrows=5000)
+orders = load_table("olist", "olist_orders_dataset", data_dir="../data")
+payments = load_table("olist", "olist_order_payments_dataset", data_dir="../data")
+orders, payments = sample_pair(orders, payments, "order_id", "order_id")
 print("orders  ", orders.shape)
 print("payments", payments.shape)
 print("orders columns  :", list(orders.columns))
@@ -848,8 +849,9 @@ for pair, score in exact.items():
 ## Reproducing
 
 ```bash
-make data     # the Olist CSVs
-make eda      # execute this notebook
+make setup
+uv run python -m swsn.download --only olist
+uv run jupyter nbconvert --to notebook --execute --inplace notebooks/tool_valentine.ipynb
 ```
 """),
 ])
@@ -869,48 +871,48 @@ why the project checks a SHA-256 against the registry instead of trusting the do
     md("""
 ## Download a public dataset
 
-`dataset_download("<owner>/<slug>")` fetches the dataset and returns the local directory.
-The handle includes the version, so the same call is reproducible until the publisher
-uploads a new version. The dataset here is a 36 KB CSV from the project registry.
+`dataset_download("<owner>/<slug>/versions/<version>")` returns the local directory
+for a pinned dataset version. The example uses a small CSV from the project registry.
 """),
     code("""
 import kagglehub
 
-path = kagglehub.dataset_download("fedesoriano/heart-failure-prediction")
-print("path:", path)
+from swsn.registry import load_registry, sha256_file
+
+registry = load_registry("../data/datasets.yaml")
+dataset = registry.datasets["heart_failure"]
+handle = f"{dataset.kaggle_slug}/versions/{dataset.version}"
+path = kagglehub.dataset_download(handle)
+print("dataset:", handle)
 """),
     md("""
 ## Files and cache behaviour
 
-The returned path lives inside kagglehub's cache. Calling the same handle again does not
-re-download: it resolves to the same directory, which is what makes repeated notebook runs
-cheap and offline runs possible once the cache is warm.
+The returned path lives inside kagglehub's cache. A repeat request for the same pinned
+version can reuse the cached files. The example checks that both calls resolve to the
+same directory.
 """),
     code("""
 from pathlib import Path
 
-second = kagglehub.dataset_download("fedesoriano/heart-failure-prediction")
+second = kagglehub.dataset_download(handle)
 print("same directory:", Path(path) == Path(second))
-print("cache root   :", kagglehub.cache.get_cache_folder())
 print("files        :", sorted(p.name for p in Path(path).iterdir()))
 """),
     md("""
 ## Verify a checksum
 
-A cache hit proves the bytes did not change locally; it does not prove they are the bytes
-the project pinned. `data/datasets.yaml` records a SHA-256 per file, and the project
-verifies it before using the data — a silent dataset update changes the evaluation set,
-which would make every result incomparable to the last one.
+`data/datasets.yaml` records a SHA-256 per file. Verify the cached file against the
+registry before using it so the experiment runs on the intended data.
 """),
     code("""
-from swsn.registry import load_registry, sha256_file
-
-registry = load_registry("../data/datasets.yaml")
-dataset = registry.datasets["heart_failure"]
 actual = sha256_file(Path(path) / "heart.csv")
-print("registry :", dataset.sha256["heart.csv"])
+expected = dataset.sha256["heart.csv"]
+print("registry :", expected)
 print("actual   :", actual)
-print("match    :", actual == dataset.sha256["heart.csv"])
+if actual != expected:
+    raise ValueError("SHA-256 mismatch for heart.csv")
+print("checksum verified")
 """),
     md("""
 ## Relation to the project's download step
@@ -924,8 +926,7 @@ is an implementation detail; the registry and the checksum are the contract.
 
 ```bash
 make setup
-# execute this notebook (needs network on a cold cache)
-make eda
+uv run jupyter nbconvert --to notebook --execute --inplace notebooks/tool_kagglehub.ipynb
 ```
 """),
 ])
@@ -1003,7 +1004,9 @@ with tempfile.TemporaryDirectory() as tmp:
     try:
         load_schema(bad)
     except ValueError as exc:
-        print(f"{type(exc).__name__}: {exc}")
+        print(f"{type(exc).__name__}: {str(exc).removeprefix(str(bad) + ': ')}")
+    else:
+        raise AssertionError("Expected load_schema to reject a schema without tables")
 """),
     md("""
 ## Safe loading
@@ -1031,7 +1034,8 @@ Note `version: "1"` stays a string: the registry quotes versions on purpose, bec
 ## Reproducing
 
 ```bash
-make eda
+make setup
+uv run jupyter nbconvert --to notebook --execute --inplace notebooks/tool_pyyaml.ipynb
 ```
 """),
 ])

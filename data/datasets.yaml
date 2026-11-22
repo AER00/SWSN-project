@@ -13,8 +13,7 @@
 #   licence       recorded verbatim from the dataset page, with a link
 #   status        candidate -> admitted | dropped (with a reason)
 #
-# Do not invent entries: a dataset is admitted only after the full triage gate in
-# milestone2-plan.md §1.1 (G1-G5) has been applied to the downloaded files. The C-nat
+# Admission requires the G1-G5 triage checks on the downloaded files. The C-nat
 # datasets stay `candidate` until G3 (>=3 annotated correspondences) and G4 are checked.
 
 schema_version: 1

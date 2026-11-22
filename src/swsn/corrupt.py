@@ -1,4 +1,4 @@
-"""Corruption ladder (milestone2-plan.md §1.6).
+"""Corruption ladder.
 
 Every operator is declared in ``corruption/ladder.yaml`` with a ``preserves_match``
 contract. Generation is deterministic given the seed. Header renames are recorded in a

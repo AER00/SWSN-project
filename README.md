@@ -1,125 +1,44 @@
 # Valentine on messy Kaggle tables
 
-Analysis of Valentine's schema-matching suite on messy, real-world Kaggle tables, and a
-normalisation-aware extension of the hybrid COMA matcher.
+We’re testing how well [Valentine](https://delftdata.github.io/valentine/) finds columns that mean the same thing in different tables. For example, an order ID can have a different name or format in an orders table and a payments table. Our starting point is COMA, which compares both column names and cell values. We built a version called NormalisedComa that cleans up common differences in cell values before comparing them.
 
-Course project, SWSN 2026/27. Milestone 1 fixed the topic, method and literature; this
-repository is the code base for Milestone 2 onward.
+This is our SWSN 2026/27 course project. We use [Olist](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce) and [Instacart](https://www.kaggle.com/datasets/psparks/instacart-market-basket-analysis) because their documentation gives us known column relationships to check our matches against.
 
-## Status
+## Milestone 3 submission
 
-| Milestone | Due | State |
-|---|---|---|
-| M2 — datasets, EDA, repo, report | 09.11.2026 | datasets triaged, ground truth transcribed, 600-run ladder benchmark, report drafted |
-| M3 — tools, preprocessing, Kanban | 16.11.2026 | four tool notebooks, preprocessing with a [reproducible demo](docs/extension.md#m3-preprocessing), protocol frozen, Kanban seeded |
-| M4 — first results, novelty | 30.11.2026 | [first matcher results and ablations](docs/extension.md#m4-matcher-evaluation) |
-| M5 — second results, draft report | 14.12.2026 | not started |
-| M6 — final report, defence | 11–18.01.2027 | not started |
+- [Tools and method choices](docs/tools.md) explains what we used and why we started with COMA.
+- **Introductory notebooks** cover [Valentine](notebooks/tool_valentine.ipynb), [kagglehub](notebooks/tool_kagglehub.ipynb), [RapidFuzz](notebooks/tool_rapidfuzz.ipynb), and [PyYAML](notebooks/tool_pyyaml.ipynb). The notebooks include their outputs.
+- [Preprocessing demo](docs/extension.md#m3-preprocessing) shows what changes before and after normalisation using Olist values. The [preprocessing code](src/swsn/extension/canonicalise.py) handles missing-value markers, date formats, numbers and unit labels, and text formatting.
+- [Kanban board](https://github.com/users/AER00/projects/2/views/1) and [M3 issues](https://github.com/AER00/SWSN-project/milestone/1) show who took each task and its target date. The course brief lists 16 November and the GitHub milestone lists 23 November.
 
-### Headline result
+## Run the notebooks
 
-Recovery@1 on twelve documented table pairs, cumulative corruption ladder:
-
-| | L0 | L1 header | L2 +values | L3 +noise | L4 +semantic |
-|---|---|---|---|---|---|
-| COMA | 0.958 | 0.542 | 0.486 | 0.486 | 0.403 |
-| SimilarityFlooding | 0.958 | 0.833 | 0.750 | 0.722 | 0.722 |
-| Jaccard | 0.875 | 0.708 | 0.403 | 0.403 | 0.403 |
-| Cupid | 0.847 | 0.292 | 0.208 | 0.292 | 0.292 |
-| DistributionBased | 0.648 | 0.537 | 0.292 | 0.283 | 0.250 |
-
-For name-based matchers (COMA, Cupid) header noise is most of the loss (COMA 0.958→0.542, Cupid 0.847→0.292), while value-based
-matchers (Jaccard, DistributionBased) lose most at the value levels. The one genuinely cross-lingual correspondence (Olist's
-Portuguese→English category name) is not recovered at k=1 by any matcher (single pair; see docs/findings.md). The full write-up is `reports/milestone2-eda.pdf`.
-
-## Quickstart
+Install [uv](https://docs.astral.sh/uv/) and Make, then run these commands from the repository root. The setup uses Python 3.13 and fetches the language data that Valentine needs. The Valentine notebook uses Olist, while the kagglehub notebook downloads a small public dataset and checks it against the version and checksum in our registry.
 
 ```bash
-make setup               # uv sync + the NLTK corpora Valentine downloads on first use
-make data                # download the Kaggle datasets (public, anonymous access)
-make triage              # apply the G1-G5 admission gate -> evaluation/triage.json
-make bench               # 5 matchers x 5 levels x 12 pairs with ground truth (18 declared) -> evaluation/results_*.csv
-make figures             # reports/figures/*.pdf + *.svg
-make test                # test suite
-make eda                 # execute the notebooks
-make all                 # setup + data + test + eda
+make setup
+uv run python -m swsn.download --only olist
+uv run jupyter nbconvert --to notebook --execute --inplace \
+    notebooks/tool_valentine.ipynb notebooks/tool_kagglehub.ipynb \
+    notebooks/tool_rapidfuzz.ipynb notebooks/tool_pyyaml.ipynb
 ```
 
-Each target is a thin wrapper over a module (`python -m swsn.<name>`), so anything can be
-run and inspected on its own. `make bench` takes about four minutes.
+For the full analysis, run `make data` to fetch the datasets, `make eda` to run all notebooks, and `make test` to run the tests. `make triage` checks which datasets meet our criteria. `make bench` runs the baseline benchmark and `make figures` regenerates the plots.
 
-`make setup` also fetches ~52 MB of NLTK data (`punkt_tab`, `omw-1.4`, `stopwords`,
-`wordnet`) into `~/nltk_data`. Without it the first `Coma` call downloads them itself —
-taking ~26 s instead of ~0.15 s — and an offline machine cannot run the hybrid matchers at
-all. See `docs/findings.md`.
+The raw CSVs are kept locally. The [dataset registry](data/datasets.yaml) lists the versions, checksums, and licences. The [data README](data/README.md) explains where to put the files if you need to download them manually.
 
-Requires [`uv`](https://docs.astral.sh/uv/). Python 3.13 is installed automatically by
-`uv` — do **not** use the system Python 3.14, Valentine needs `>=3.12,<3.16` and Python
-3.15 lacks PuLP wheels on macOS.
+## How we test the matchers
 
-No Kaggle account or API token is needed: every source is a public Kaggle *Dataset*,
-which downloads anonymously through `kagglehub`. If downloads are blocked, the README in
-`data/` explains how to place the CSVs manually (`make data OFFLINE=1`).
+We take the same table pairs and add different kinds of noise, from renamed headers to changed number formats and category labels. We track the known matches through these changes. Recovery@1 measures how often a documented match ranks first for its source column. We also break down the results by match type, since easy ID matches can dominate the overall score.
 
-## M3 submission
+In the baseline benchmark, COMA’s average Recovery@1 fell from 0.958 on the original tables to 0.542 after header changes. Jaccard dropped from 0.708 after header changes to 0.403 when we also changed value formats. The [M2 report](reports/milestone2-eda.pdf) covers the data, plots, and limitations. Our [first M4 results](docs/extension.md#m4-matcher-evaluation) compare NormalisedComa with COMA and Jaccard and show what happens when we switch off each cleaning step.
 
-| Item | Link |
+## Where things are
+
+| Folder | Contents |
 |---|---|
-| Repository | https://github.com/AER00/SWSN-project |
-| Tool selection and justification | [`docs/tools.md`](docs/tools.md) |
-| Introductory notebooks | [`tool_valentine`](notebooks/tool_valentine.ipynb), [`tool_kagglehub`](notebooks/tool_kagglehub.ipynb), [`tool_rapidfuzz`](notebooks/tool_rapidfuzz.ipynb), [`tool_pyyaml`](notebooks/tool_pyyaml.ipynb) |
-| Preprocessing | [`src/swsn/extension/canonicalise.py`](src/swsn/extension/canonicalise.py) with a before/after [demo](docs/extension.md#m3-preprocessing) on real Olist values |
-| Project management | https://github.com/users/AER00/projects/2 |
-| How to run | `make setup` then `make eda`; each notebook is also a standalone module. See the Quickstart above. |
-
-The four notebooks are generated from `notebooks/_build.py` and executed in place, so the
-committed outputs show that they run. The preprocessing artefact is the same code the
-extension uses in M4, not a separate demo script.
-
-## Repository layout
-
-```
-data/            dataset registry (datasets.yaml), download script, raw data (gitignored)
-src/swsn/        profiling, audit, corruption, probe and diagnostic modules
-src/swsn/extension/  the M3/M4 deliverable: canonicalisation + NormalisedComa matcher
-corruption/      declared corruption operators per ladder level
-evaluation/      provisional evaluation protocol and baseline definitions
-ground_truth/    transcribed schemas, labelled pairs, annotation guide, agreement tooling
-notebooks/       the seven EDA notebooks (00–06)
-reports/         the 2-page EDA report and exported figures
-docs/            tool inventory and extended bibliography
-tests/           smoke tests
-```
-
-## Data and licences
-
-Raw CSVs are **not** committed. `data/datasets.yaml` records each dataset's slug,
-version, SHA-256 and licence; `data/README.md` carries the attribution text. Datasets are
-attributed to their Kaggle publishers and are used under their respective licences
-(several are non-commercial).
-
-## Notebooks
-
-| Notebook | Purpose |
-|---|---|
-| `00_dataset_triage` | candidate → admitted/dropped, with the reason per table |
-| `01_inventory` | tables, schemas, types, sizes |
-| `02_dirtiness` | D1–D7 dirtiness profile across the collection |
-| `03_documentation_audit` | D9: does the published schema hold in the files? |
-| `04_cross_table` | D8 name-similarity × value-overlap quadrants |
-| `05_probe_recovery` | how well Valentine recovers documented relationships |
-| `06_corruption_ladder` | how the matching signal degrades from L0 to L4 |
-| `tool_valentine` | M3 tool introduction: load two tables, run `Coma`, read `MatcherResults`, score against ground truth, register a custom `BaseMatcher` |
-| `tool_kagglehub` | M3 tool introduction: download a public dataset, cache behaviour, checksum verification |
-| `tool_rapidfuzz` | M3 tool introduction: `ratio` vs `token_sort_ratio` vs `token_set_ratio` on column names and category values, with the case-sensitivity and separator pitfalls |
-| `tool_pyyaml` | M3 tool introduction: load the registry, validate the ladder, fail loudly on a bad entry |
-
-## Method in one paragraph
-
-Documented multi-table datasets supply ground truth that annotation cannot: the publisher
-states which columns correspond. Those correspondences are stratified (S1 same-name keys,
-S2 renamed, S3 format/unit, S4 traps) because the trivial stratum would otherwise dominate
-any aggregate score. The same datasets are then degraded along a declared corruption ladder
-(L0–L4) — one dimension per level — with ground truth preserved through recorded rename
-maps. This gives an evaluation where every result has a known cause, and a specification for
-the normalisation-aware matcher the project proposes.
+| `notebooks/` | Exploratory analysis (00–06) and the four M3 tool demos |
+| `src/swsn/` | Data loading, analysis, and benchmark code. The matcher and its preprocessing are in `extension/`. |
+| `corruption/` and `ground_truth/` | Noise settings and documented column matches |
+| `evaluation/` | Evaluation settings and benchmark results |
+| `reports/` and `docs/` | M2 report, figures, method notes, and references |

@@ -1,4 +1,4 @@
-"""Dirtiness profiling — dimensions D1-D7 (milestone2-plan.md §3.1).
+"""Dirtiness profiling — dimensions D1-D7.
 
 These are v1 heuristics, deliberately simple and explainable: every number has to be
 defensible in the report, so nothing here is a learned score. Refine in M3 if a dimension

@@ -1,4 +1,4 @@
-"""D8 — the cross-table diagnostic (milestone2-plan.md §3.2).
+"""D8 — the cross-table diagnostic.
 
 For every pair of columns between two tables compute:
 

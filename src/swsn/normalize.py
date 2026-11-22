@@ -1,8 +1,7 @@
 """Minimal canonicaliser — M2 preview only.
 
 This is the ~30-line demonstrator used to estimate how much value-overlap headroom
-canonicalisation buys (milestone2-plan.md §3.4). It is deliberately *not* the deliverable:
-the production version lives in ``swsn.extension.canonicalise`` and is M3 work.
+canonicalisation buys. The matcher uses ``swsn.extension.canonicalise``.
 
 Rule: canonicalise only what a rule can justify. Anything that needs semantics
 (translating 'São Paulo' to 'SP') is out of scope here and belongs to L4.

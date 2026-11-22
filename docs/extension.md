@@ -8,6 +8,9 @@ normalises dates, numeric formatting and known unit affixes, and finally text
 case, punctuation and whitespace. It does not convert units, translate values,
 or repair semantic changes. Sentinel rules are specific to this corruption
 ladder: `999` and `-1`, for example, can be legitimate values in other data.
+Run the pipeline once on raw values. For example, `00000999` becomes `999` on
+the first pass, and a second pass treats `999` as a missing-value marker.
+An ambiguous number such as `1,234` is read as a grouped integer.
 
 Pandas loads CSVs consistently with the baseline, and Python's standard library
 implements the explicit parsing rules with no new runtime dependency. Valentine

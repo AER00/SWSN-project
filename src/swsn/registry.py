@@ -89,7 +89,7 @@ class TablePair:
         if not self.rationale.strip():
             raise ValueError(
                 f"pair {self.id!r} needs a rationale: why would these two tables be "
-                "related in practice? (milestone2-plan.md §1.3)"
+                "related in practice?"
             )
 
 

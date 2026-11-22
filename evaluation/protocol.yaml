@@ -59,7 +59,7 @@ matchers:
 
 # ---------------------------------------------------------------------------------
 # Ground-truth strata. Aggregate scores are dominated by S1 and must never be reported
-# alone — see milestone2-plan.md §1.5.
+# alone.
 # ---------------------------------------------------------------------------------
 strata:
   S1: "documented key, near-identical column name"

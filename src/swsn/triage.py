@@ -1,4 +1,4 @@
-"""The admission gate G1-G5 (milestone2-plan.md §1.1), as code rather than prose.
+"""The admission gate G1-G5.
 
 A dataset is admitted only if all five criteria pass. Three of them are measurable from
 what we already have — the registry, the transcribed schema, the profiler — and are
