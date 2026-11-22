@@ -11,7 +11,7 @@ repository is the code base for Milestone 2 onward.
 | Milestone | Due | State |
 |---|---|---|
 | M2 — datasets, EDA, repo, report | 09.11.2026 | datasets triaged, ground truth transcribed, 600-run ladder benchmark, report drafted |
-| M3 — tools, preprocessing, Kanban | 16.11.2026 | not started (`extension/` scaffolded only) |
+| M3 — tools, preprocessing, Kanban | 16.11.2026 | Kanban and protocol frozen; `tool_rapidfuzz` notebook done; canonicalisation still stubs |
 | M4 — first results, novelty | 30.11.2026 | not started |
 | M5 — second results, draft report | 14.12.2026 | not started |
 | M6 — final report, defence | 11–18.01.2027 | not started |
@@ -94,6 +94,7 @@ attributed to their Kaggle publishers and are used under their respective licenc
 | `04_cross_table` | D8 name-similarity × value-overlap quadrants |
 | `05_probe_recovery` | how well Valentine recovers documented relationships |
 | `06_corruption_ladder` | how the matching signal degrades from L0 to L4 |
+| `tool_rapidfuzz` | M3 tool introduction: `ratio` vs `token_sort_ratio` vs `token_set_ratio` on column names and category values, with the case-sensitivity and separator pitfalls |
 
 ## Method in one paragraph
 

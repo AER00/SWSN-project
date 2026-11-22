@@ -1,4 +1,4 @@
-"""Build the seven EDA notebooks.
+"""Build the seven EDA notebooks and the M3 tool notebooks.
 
 Kept as a script rather than seven hand-edited JSON files: the notebooks are executable
 documents over a library, so their content is a dozen calls each and editing JSON by hand
@@ -472,6 +472,235 @@ That 0.0 is the case for the project's extension. Everything else recovers; this
 make bench      # evaluation/results_attribution.csv + results_cumulative.csv
 make figures    # reports/figures/*.pdf + *.svg
 ```
+"""),
+])
+
+
+# ------------------------------------------------------- tool notebooks (M3)
+NOTEBOOKS["tool_rapidfuzz"] = notebook("tool_rapidfuzz", [
+    md("""
+# rapidfuzz — introductory notebook
+
+M3 requires a minimal notebook per selected tool. This one covers **rapidfuzz**, the
+fuzzy-string library the project depends on (`pyproject.toml`). It is short on purpose:
+setup, the two scoring choices that matter here (plain `ratio` vs `token_set_ratio`), and
+one worked example on column names and one on category values.
+
+`rapidfuzz` is a C++ implementation of the string metrics popularised by `fuzzywuzzy`.
+It is fast enough to score every column-name pair between two tables, which is what makes
+it usable inside a diagnostic rather than only offline.
+
+**Why it is relevant to this project.** The D8 cross-table diagnostic
+(`src/swsn/pairdiag.py`) scores names with a hand-rolled exact-token Jaccard: it returns
+0.33 for `customer_city` vs `customer_cty` and 0.50 for `price` vs `price (brl)`, even
+though a human reads both pairs as the same column. Fuzzy scoring is the obvious
+replacement signal, and *which* scorer to use — and what has to happen before it — is the
+content of this notebook.
+"""),
+    code(SETUP),
+    md("""
+## Setup
+
+rapidfuzz is a project dependency, so there is no install step. Every scorer returns a
+score in `[0, 100]`.
+"""),
+    code("""
+from rapidfuzz import __version__ as rapidfuzz_version, fuzz
+from rapidfuzz.utils import default_process
+
+print("rapidfuzz", rapidfuzz_version)
+print("default_process('Credit_Card (BRL)') ->", repr(default_process("Credit_Card (BRL)")))
+
+for name in ("ratio", "partial_ratio", "token_sort_ratio", "token_set_ratio", "WRatio"):
+    scorer = getattr(fuzz, name)
+    print(f"{name:18} {scorer('order id', 'order_id'):6.2f}  {scorer('payment', 'payment_value'):6.2f}")
+"""),
+    md("""
+## Two defaults that will bite you
+
+rapidfuzz scores **raw characters** unless you pass a `processor`. That has two
+consequences the project cannot ignore:
+
+1. **Every scorer is case-sensitive.** `boleto` vs `BOLETO` scores 0 — the strings share
+   no case-matching characters beyond the empty one.
+2. **`token_*` scorers split on whitespace only.** `order_status` is one token; it does
+   not line up with the tokens of `status of order`. Snake_case names therefore behave
+   like single opaque strings instead of word sequences.
+
+Both are fixed in one step by `default_process`, which lowercases and maps every
+non-alphanumeric character to a space — the same normalisation the project's
+canonicalisation does before any comparison. The cell below shows the difference in
+isolation, because it is the single most common way a rapidfuzz score looks "wrong".
+"""),
+    code("""
+cases = [
+    ("boleto", "BOLETO"),
+    ("order_status", "status of order"),
+    ("credit_card", "credit card"),
+    ("customer_city", "customer_cty"),
+]
+
+for a, b in cases:
+    raw = fuzz.token_set_ratio(a, b)
+    proc = fuzz.token_set_ratio(a, b, processor=default_process)
+    print(f"{a:14} | {b:20} raw {raw:6.1f}   with default_process {proc:6.1f}")
+"""),
+    md("""
+- Case: `boleto`/`BOLETO` goes 0 → 100.
+- Separator: `order_status`/`status of order` goes ~81 → 100, because the underscore now
+  becomes a token boundary.
+- A typo is already handled without preprocessing: `customer_city`/`customer_cty` scores
+  96 in both modes, which is exactly the case an exact-token measure misses.
+
+So the rest of the notebook reports scores **with `default_process` applied**, and says so.
+"""),
+    md("""
+## Scorer choice on column names
+
+`ratio` compares the character sequences; `token_sort_ratio` sorts whitespace-separated
+tokens before comparing; `token_set_ratio` compares token *sets*, so a superset (an
+appended unit or language marker) scores as high as an exact match.
+
+The rows are the kinds of names the corruption ladder produces: a unit or language marker
+appended, a rename, a typo, a reorder. The last column is the project's current
+exact-token Jaccard for reference.
+"""),
+    code("""
+from swsn.pairdiag import name_similarity
+
+name_pairs = [
+    ("order_id", "order id"),
+    ("customer_zip_code_prefix", "geolocation_zip_code_prefix"),
+    ("price", "PRICE (BRL)"),
+    ("product_category_name", "product_category_name (en)"),
+    ("customer_city", "customer_cty"),
+    ("order_status", "status_of_order"),
+    ("shipping_limit_date", "Unnamed: 3"),
+    ("review_score", "review_comment_title"),
+]
+
+pd.DataFrame(
+    [
+        {
+            "a": a,
+            "b": b,
+            "ratio": round(fuzz.ratio(a, b, processor=default_process), 1),
+            "token_sort": round(fuzz.token_sort_ratio(a, b, processor=default_process), 1),
+            "token_set": round(fuzz.token_set_ratio(a, b, processor=default_process), 1),
+            "token_jaccard (project)": round(name_similarity(a, b), 2),
+        }
+        for a, b in name_pairs
+    ]
+)
+"""),
+    md("""
+What to take from the table:
+
+- **An appended unit is the `token_set_ratio` column** — `price` vs `PRICE (BRL)` scores
+  66.7 with `ratio` (the suffix costs a third of the score) and 100 with `token_set`.
+- **A reorder plus a stopword needs `token_set_ratio`** — `order_status` vs
+  `status_of_order` goes 44.4 → 88.9 → 100 across `ratio`, `token_sort_ratio` and
+  `token_set_ratio`: sorting removes the order penalty, and set comparison ignores the
+  extra `of`.
+- **A typo is where character-level scoring earns its place** — `customer_city` vs
+  `customer_cty` is 96, against 0.33 for exact-token Jaccard.
+- **No scorer fixes a rename** — `shipping_limit_date` vs `Unnamed: 3` is low for every
+  scorer above. That is L1 and semantic territory; string similarity cannot cross it,
+  and the extension is supposed to be honest about that boundary.
+"""),
+    md("""
+## Category values
+
+The same question for values rather than names, using categories the project actually
+uses (Olist statuses and payment types, Brazilian state names, product categories). The
+last three rows are the boundary case: a Portuguese→English translation.
+"""),
+    code("""
+value_pairs = [
+    ("delivered", "Delivered"),
+    ("shipped", "shiped"),
+    ("credit_card", "credit card"),
+    ("boleto", "BOLETO"),
+    ("voucher", "voucher "),
+    ("SP", "São Paulo"),
+    ("beleza_saude", "health_beauty"),
+    ("casa_conforto", "home comfort"),
+    ("telefonia_fixa", "landline_phone"),
+]
+
+pd.DataFrame(
+    [
+        {
+            "a": a,
+            "b": b,
+            "ratio": round(fuzz.ratio(a, b, processor=default_process), 1),
+            "token_sort": round(fuzz.token_sort_ratio(a, b, processor=default_process), 1),
+            "token_set": round(fuzz.token_set_ratio(a, b, processor=default_process), 1),
+        }
+        for a, b in value_pairs
+    ]
+)
+"""),
+    md("""
+Two conclusions the project relies on:
+
+1. **Fuzzy scoring is a clustering aid, not a matcher.** After preprocessing, same-language
+   variants (`delivered`/`Delivered`, `credit_card`/`credit card`, `boleto`/`BOLETO`) all
+   sit near 100, which is what D5 (categorical variants) measures. It does not decide that
+   two *columns* correspond — that needs the value overlap on canonicalised value sets.
+2. **It cannot cross a language or a code.** `beleza_saude`/`health_beauty` scores ~40,
+   `casa_conforto`/`home comfort` ~56, `SP`/`São Paulo` 18–36, `telefonia_fixa`/`landline_phone`
+   ~29–36 — far below the ~100 of a same-language variant. The project puts those in L4 and
+   treats them as out of reach for normalisation; a low score here is the correct,
+   negative-control behaviour, not a bug to tune away.
+"""),
+    md("""
+## Using it on a table
+
+One worked call on the project's own ground-truth column names: take the columns of one
+table and ask which are closest to a query name. `process.extract` runs the loop. The
+score tells you *closeness*; the threshold is a decision, not a default.
+"""),
+    code("""
+from rapidfuzz import process
+
+columns = [
+    "order_id", "customer_id", "order_status", "order_purchase_timestamp",
+    "order_approved_at", "order_delivered_carrier_date", "order_delivered_customer_date",
+    "order_estimated_delivery_date",
+]
+
+for query in ("order date", "purchase time", "customer"):
+    best = process.extract(query, columns, scorer=fuzz.token_set_ratio,
+                           processor=default_process, limit=3)
+    print(f"{query!r:16} ->", [(choice, round(score, 1)) for choice, score, _ in best])
+"""),
+    md("""
+What this exposes:
+
+- `order date` returns **three different date columns all at 100**, because each contains
+  the token set {order, date}. The score cannot tell `order_delivered_carrier_date` from
+  `order_estimated_delivery_date`, which is exactly the many-to-one decision the matcher
+  has to make with value overlap, not string similarity.
+- `customer` matches both `customer_id` and `order_delivered_customer_date` at 100, for
+  the same set-containment reason.
+
+So: use rapidfuzz as a **signal**, never as a decision rule. The project's D8 diagnostic
+keeps exact-token Jaccard deliberately (see `docs/findings.md` on D8); this notebook shows
+what would change if that were swapped for `token_set_ratio`, and why the swap is a
+trade-off rather than a strict improvement.
+"""),
+    md("""
+## Reproducing
+
+```bash
+make notebooks   # regenerate notebooks/*.ipynb from scripts/notebook builder
+make eda         # execute every notebook in place
+```
+
+The project's own name-similarity function is `swsn.pairdiag.name_similarity`. It is
+exact-token by design: changing the diagnostic's signal changes the D8 quadrant counts,
+so the swap belongs in a commit that re-runs the diagnostic and updates the figures.
 """),
 ])
 
