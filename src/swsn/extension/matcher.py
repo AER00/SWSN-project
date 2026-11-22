@@ -1,34 +1,18 @@
-"""NormalisedComa — the method, not the preprocessing.
-
-Interface frozen in M2; body is M3/M4 work. The point of freezing it now is that M4's
-"method execution" has a target and the type-3 claim ("a new method") is backed by code
-rather than by a description.
-
-What it will do differently from Valentine's `Coma`:
-
-1. the schema signal is unchanged — column names, tokenised as Coma does it;
-2. the instance signal is computed over *canonical* value sets (``values.py``), so
-   formatting, units, sentinels and dates no longer destroy value overlap;
-3. the two signals are combined with per-signal weights exposed through
-   ``match_details``, which makes the contribution inspectable and the ablation exact;
-4. a confidence threshold is derived from the observed score distribution rather than
-   fixed, so the decision point adapts to the dataset instead of to the benchmark.
-
-TODO(M3): verify the ``BaseMatcher`` import path and the exact ``get_matches`` signature
-against the installed Valentine version before implementing — the published docs describe
-the method but not the signature.
-"""
+"""Combine COMA's flat-schema name signal with canonical value overlap."""
 
 from __future__ import annotations
 
+from itertools import combinations
+from statistics import median
+
+import pandas as pd
+from valentine.algorithms import BaseMatcher, ColumnPair
+from valentine.algorithms.coma.similarity.tokens import tokens_similarity
+from valentine.algorithms.coma.similarity.trigram import trigram_similarity
+from valentine.data_sources import BaseTable
+
 from .config import CanonicalisationConfig
-
-try:  # pragma: no cover - import shape depends on the installed version
-    from valentine.algorithms.base_matcher import BaseMatcher  # type: ignore
-except ImportError:  # pragma: no cover
-
-    class BaseMatcher:  # type: ignore[no-redef]
-        """Fallback so this module imports without Valentine installed."""
+from .values import DEFAULT_MAX_DISTINCT, canonical_value_set, jaccard
 
 
 class NormalisedComa(BaseMatcher):
@@ -37,11 +21,13 @@ class NormalisedComa(BaseMatcher):
     def __init__(
         self,
         config: CanonicalisationConfig | None = None,
-        max_distinct_values: int = 1000,
+        max_distinct_values: int = DEFAULT_MAX_DISTINCT,
         schema_weight: float = 0.5,
         instance_weight: float = 0.5,
         seed: int = 42,
     ) -> None:
+        if max_distinct_values < 0:
+            raise ValueError("max_distinct_values must be non-negative")
         if not 0.0 <= schema_weight <= 1.0:
             raise ValueError("schema_weight must be in [0, 1]")
         if not 0.0 <= instance_weight <= 1.0:
@@ -54,24 +40,54 @@ class NormalisedComa(BaseMatcher):
         self.schema_weight = schema_weight
         self.instance_weight = instance_weight
         self.seed = seed
+        self._match_details: dict[ColumnPair, dict[str, float]] = {}
 
-    def get_matches(self, source_input, target_input):
-        """Return column correspondences between two tables.
+    def get_matches(self, source_input: BaseTable, target_input: BaseTable) -> dict[ColumnPair, float]:
+        """Return column correspondences between two tables."""
+        return self.get_matches_batch([source_input, target_input])
 
-        M3 implementation outline:
-          1. canonical value sets for both sides (``values.canonical_value_set``);
-          2. name similarity for the schema signal;
-          3. weighted combination into a score per candidate pair;
-          4. ``match_details`` carrying ``name_sim``, ``value_sim`` and the weights.
-        """
-        raise NotImplementedError(
-            "M3: implement NormalisedComa.get_matches — see the module docstring for the "
-            "four steps and evaluation/protocol.yaml for the ablation switches"
-        )
+    def get_matches_batch(self, tables: list[BaseTable]) -> dict[ColumnPair, float]:
+        """Keep scores at or above the median positive score for each table pair."""
+        self._match_details = {}
+        matches: dict[ColumnPair, float] = {}
+        if len(tables) < 2:
+            return matches
 
-    def get_matches_batch(self, profiles):
-        """Optional batch view; Coma uses it for statistics across all input tables.
+        profiles = [
+            (table.name, {
+                column.name: canonical_value_set(
+                    pd.Series(column.data, dtype=object), self.config,
+                    max_distinct=self.max_distinct_values, seed=self.seed,
+                )
+                for column in table.get_instances_columns()
+            })
+            for table in tables
+        ]
+        for (source_name, source_values), (target_name, target_values) in combinations(profiles, 2):
+            candidates = {}
+            for source_column, source_set in source_values.items():
+                for target_column, target_set in target_values.items():
+                    source_label, target_label = str(source_column), str(target_column)
+                    name_sim = max(
+                        trigram_similarity(source_label, target_label),
+                        tokens_similarity(source_label, target_label),
+                    )
+                    value_sim = jaccard(source_set, target_set)
+                    score = self.schema_weight * name_sim + self.instance_weight * value_sim
+                    if score > 0.0:
+                        pair = ColumnPair(source_name, source_column, target_name, target_column)
+                        candidates[pair] = (score, name_sim, value_sim)
 
-        TODO(M3): only override if the batch view genuinely improves the instance signal.
-        """
-        raise NotImplementedError("M3: decide whether the batch view is needed")
+            if not candidates:
+                continue
+            threshold = median(score for score, _, _ in candidates.values())
+            for pair, (score, name_sim, value_sim) in candidates.items():
+                if score >= threshold:
+                    matches[pair] = score
+                    self._match_details[pair] = {
+                        "name_sim": name_sim,
+                        "value_sim": value_sim,
+                        "schema_weight": self.schema_weight,
+                        "instance_weight": self.instance_weight,
+                    }
+        return matches

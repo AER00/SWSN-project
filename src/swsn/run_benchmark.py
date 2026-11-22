@@ -1,6 +1,7 @@
 """Run the ladder benchmark over every declared pair that has ground truth.
 
     python -m swsn.run_benchmark --protocol evaluation/protocol.yaml
+    python -m swsn.run_benchmark --extension              # M4 baselines and ablations
     python -m swsn.run_benchmark --modes attribution      # one dimension at a time
     python -m swsn.run_benchmark --datasets olist         # restrict to one dataset
 
@@ -30,11 +31,27 @@ from .schema_doc import SCHEMA_DIR, load_schema
 from .tables import load_table
 
 DEFAULT_OUT = Path("evaluation")
+EXTENSION_OUT = DEFAULT_OUT / "m4"
 
 
 def _schema_for(dataset_id: str, schema_dir: Path) -> dict | None:
     path = schema_dir / f"{dataset_id}.yaml"
     return load_schema(path) if path.exists() else None
+
+
+def _extension_matchers(protocol: dict) -> list[dict]:
+    ablation = protocol["extension_ablation"]
+    by_class = {entry["class"].rsplit(".", 1)[-1]: entry for entry in protocol["matchers"]}
+    baselines = [by_class[name.rsplit(".", 1)[-1]] for name in ablation["compare_against"]]
+    sampling = protocol.get("sampling") or {}
+    params = {
+        "max_distinct_values": int(sampling.get("distinct_values_for_similarity", 1000)),
+        "seed": int(sampling.get("sample_seed", protocol.get("seed", 42))),
+    }
+    variants = ["normalised_coma"] + [
+        f"normalised_coma_without_{component}" for component in ablation["switch_off_one_at_a_time"]
+    ]
+    return baselines + [{"id": variant, "params": params} for variant in variants]
 
 
 def run(
@@ -43,17 +60,21 @@ def run(
     schema_dir: Path = SCHEMA_DIR,
     modes: list[str] | None = None,
     datasets: list[str] | None = None,
-    out_dir: Path = DEFAULT_OUT,
+    out_dir: Path | None = None,
+    extension: bool = False,
 ) -> dict[str, pd.DataFrame]:
     protocol = load_protocol(protocol_path)
     registry = load_registry(registry_path)
 
-    matchers = [m["id"] for m in protocol.get("matchers") or []]
-    matcher_params = {m["id"]: (m.get("params") or {}) for m in protocol.get("matchers") or []}
+    entries = _extension_matchers(protocol) if extension else (protocol.get("matchers") or [])
+    matchers = [entry["id"] for entry in entries]
+    matcher_params = {entry["id"]: (entry.get("params") or {}) for entry in entries}
     levels = list((protocol.get("sets", {}).get("c_syn", {}) or {}).get("levels") or [])
     seed = int(protocol.get("seed", 42))
     max_rows = int((protocol.get("sampling") or {}).get("max_rows_per_table", 5000))
     modes = modes or ["attribution", "cumulative"]
+    if out_dir is None:
+        out_dir = EXTENSION_OUT if extension else DEFAULT_OUT
 
     results: dict[str, pd.DataFrame] = {}
     skipped: list[str] = []
@@ -128,7 +149,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--schema-dir", type=Path, default=SCHEMA_DIR)
     parser.add_argument("--modes", nargs="*", default=["attribution", "cumulative"])
     parser.add_argument("--datasets", nargs="*", help="restrict to these dataset ids")
-    parser.add_argument("--out", type=Path, default=DEFAULT_OUT)
+    parser.add_argument("--extension", action="store_true", help="run M4 baselines and ablations")
+    parser.add_argument("--out", type=Path, help="output directory (evaluation/m4 for --extension)")
     args = parser.parse_args(argv)
 
     results = run(
@@ -138,6 +160,7 @@ def main(argv: list[str] | None = None) -> int:
         modes=args.modes,
         datasets=args.datasets,
         out_dir=args.out,
+        extension=args.extension,
     )
     for mode, frame in results.items():
         print(f"\n=== {mode}: recovery@1 by level ===")

@@ -28,7 +28,18 @@ def load_protocol(path: str | Path = "evaluation/protocol.yaml") -> dict:
 
 
 def build_matcher(matcher_id: str, params: dict | None = None):
-    """Instantiate a Valentine matcher by id. Imports lazily so tests do not need it."""
+    """Instantiate a Valentine-compatible matcher by ID, importing it lazily."""
+    if matcher_id == "normalised_coma" or matcher_id.startswith("normalised_coma_without_"):
+        from swsn.extension.config import CanonicalisationConfig
+        from swsn.extension.matcher import NormalisedComa
+
+        extension_params = dict(params or {})
+        config = CanonicalisationConfig.from_dict(extension_params.pop("config", None))
+        if matcher_id != "normalised_coma":
+            component = matcher_id.removeprefix("normalised_coma_without_")
+            config = config.without(component)
+        return NormalisedComa(config=config, **extension_params)
+
     if matcher_id not in MATCHER_FACTORIES:
         raise KeyError(f"unknown matcher {matcher_id!r}")
     module_name, class_name = MATCHER_FACTORIES[matcher_id]

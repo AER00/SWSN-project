@@ -10,6 +10,7 @@ from pathlib import Path
 import pytest
 
 from swsn.probe import build_matcher, load_protocol
+from swsn.run_benchmark import _extension_matchers
 
 PROTOCOL = Path("evaluation/protocol.yaml")
 
@@ -30,6 +31,21 @@ def test_every_declared_matcher_can_be_instantiated(protocol):
     for entry in protocol["matchers"]:
         matcher = build_matcher(entry["id"], entry.get("params"))
         assert matcher is not None, entry["id"]
+
+
+def test_extension_grid_uses_declared_baselines_and_disables_one_step_at_a_time(protocol):
+    entries = _extension_matchers(protocol)
+    assert [entry["id"] for entry in entries[:3]] == ["coma", "jaccard", "normalised_coma"]
+    assert entries[0]["params"] == {"use_instances": True}
+    full = build_matcher(entries[2]["id"], entries[2]["params"])
+    components = protocol["extension_ablation"]["switch_off_one_at_a_time"]
+    assert set(full.config.enabled()) == set(components)
+    assert len(entries[3:]) == len(components)
+    for entry, component in zip(entries[3:], components, strict=True):
+        variant = build_matcher(entry["id"], entry["params"])
+        assert set(variant.config.enabled()) == set(components) - {component}
+        assert variant.max_distinct_values == full.max_distinct_values == protocol["sampling"]["distinct_values_for_similarity"]
+        assert variant.seed == full.seed == protocol["sampling"]["sample_seed"]
 
 
 def test_matcher_classes_are_importable_paths(protocol):

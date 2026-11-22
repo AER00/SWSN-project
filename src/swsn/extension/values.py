@@ -1,9 +1,4 @@
-"""Canonical value sets per column — M3 implementation target.
-
-A column becomes a set of canonical values (sampled, seeded). Two columns match on the
-instance signal in proportion to the Jaccard overlap of their sets. Everything downstream
-— the matcher, the D8 diagnostic, the ablation report — uses this one representation.
-"""
+"""Seeded canonical value sets and their Jaccard overlap for the instance signal."""
 
 from __future__ import annotations
 

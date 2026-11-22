@@ -65,6 +65,34 @@ def test_each_level_and_matcher_gets_one_row():
     assert set(result["level"]) == {"L0", "L1", "L2"}
 
 
+def test_benchmark_can_ablate_date_normalisation():
+    schema = {
+        "dataset": "toy",
+        "tables": {
+            "orders": {
+                "columns": ["abc"],
+                "references": [
+                    {"column": "abc", "table": "customers", "column_ref": "xyz", "stratum": "S3"},
+                ],
+            },
+            "customers": {"columns": ["xyz"]},
+        },
+    }
+    tables = {
+        "orders": pd.DataFrame({"abc": ["04.03.2024"]}),
+        "customers": pd.DataFrame({"xyz": ["2024-03-04"]}),
+    }
+    full = "normalised_coma"
+    without_dates = "normalised_coma_without_dates"
+
+    results = run_pair("toy", "orders", "customers", schema, tables, [full, without_dates], ["L0"])
+
+    assert list(results["status"]) == ["ok", "ok"], results["error"].tolist()
+    assert results.set_index("matcher")["recovery_at_1_S3"].to_dict() == {
+        full: 1.0, without_dates: 0.0,
+    }
+
+
 def test_mode_is_recorded_so_a_table_cannot_be_misread():
     attribution = _run(["L2"], cumulative=False)
     cumulative = _run(["L2"], cumulative=True)
