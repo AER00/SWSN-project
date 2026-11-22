@@ -9,13 +9,12 @@ from __future__ import annotations
 import re
 import unicodedata
 from collections.abc import Callable
-from datetime import datetime, time, timezone
+from datetime import UTC, datetime, time
 
 from pandas import isna
 from pandas.api.types import is_scalar
 
 from .config import CanonicalisationConfig
-
 
 _TEXT_PUNCTUATION = str.maketrans({
     **dict.fromkeys("\u2010\u2011\u2012\u2013\u2014\u2212", "-"),
@@ -70,13 +69,13 @@ def canonicalise_dates(value: object) -> str:
 
     try:
         if epoch:
-            parsed = datetime.fromtimestamp(int(epoch[1]), tz=timezone.utc)
+            parsed = datetime.fromtimestamp(int(epoch[1]), tz=UTC)
         else:
             if candidate.endswith("z"):
                 candidate = candidate[:-1] + "Z"
             parsed = datetime.fromisoformat(candidate)
             if parsed.tzinfo is not None:
-                parsed = parsed.astimezone(timezone.utc)
+                parsed = parsed.astimezone(UTC)
     except (ValueError, OverflowError, OSError):
         return text
     return parsed.date().isoformat() if parsed.time() == time.min else parsed.isoformat()

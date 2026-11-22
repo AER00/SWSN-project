@@ -15,6 +15,7 @@ data/synthetic/
 *.csv
 *.parquet
 !ground_truth/gt/*.csv
+!evaluation/m4/*.csv
 
 # notebooks
 .ipynb_checkpoints/
