@@ -705,6 +705,156 @@ so the swap belongs in a commit that re-runs the diagnostic and updates the figu
 ])
 
 
+NOTEBOOKS["tool_valentine"] = notebook("tool_valentine", [
+    md("""
+# valentine — introductory notebook
+
+M3 requires a minimal notebook per selected tool. This one covers **valentine**, the
+library under study: load two tables, run a matcher, read the result object, score it
+against documented ground truth, and register a trivial matcher of your own.
+
+The project uses Valentine as the baseline suite; the extension in
+`src/swsn/extension/` is a `BaseMatcher` subclass that plugs into the same harness.
+"""),
+    code(SETUP),
+    md("""
+## Two tables
+
+Loaded through the project's table loader so the path, encoding and sampling match every
+other notebook and the benchmark. Both tables come from Olist and are documented as
+joinable on `order_id`.
+"""),
+    code("""
+from swsn.tables import load_table
+
+orders = load_table("olist", "olist_orders_dataset", data_dir="../data", nrows=5000)
+payments = load_table("olist", "olist_order_payments_dataset", data_dir="../data", nrows=5000)
+print("orders  ", orders.shape)
+print("payments", payments.shape)
+print("orders columns  :", list(orders.columns))
+print("payments columns:", list(payments.columns))
+"""),
+    md("""
+## Run a matcher
+
+`valentine_match` takes a list of tables, a matcher instance and names for the tables.
+It returns a `MatcherResults`, which is a read-only mapping from `ColumnPair` to a score.
+Coma is hybrid here: schema (name) similarity and instance (value) similarity.
+"""),
+    code("""
+from valentine import valentine_match
+from valentine.algorithms import Coma
+
+matches = valentine_match(
+    [orders, payments],
+    Coma(use_schema=True, use_instances=True),
+    df_names=["orders", "payments"],
+)
+print(f"{len(matches)} candidate pairs")
+for pair, score in list(matches.items())[:5]:
+    print(f"{pair.source_column:35} -> {pair.target_column:25} {score:.3f}")
+"""),
+    md("""
+## Reading `MatcherResults`
+
+The mapping is sorted from highest to lowest score, so the first item is the matcher's
+best proposal. `get_details(pair)` returns the per-sub-matcher breakdown when the matcher
+provides one — for Coma, the name and instance components.
+"""),
+    code("""
+best = next(iter(matches))
+print("best pair :", best)
+print("score     :", round(matches[best], 3))
+print("details   :", matches.get_details(best))
+"""),
+    md("""
+## Score against documented ground truth
+
+The publisher documents which columns correspond, so the ground truth does not have to be
+hand-annotated. `ground_truth_set` returns `(source_column, target_column)` pairs for one
+table pair; Valentine's metrics accept full `ColumnPair` instances, which keeps the table
+names in the comparison.
+"""),
+    code("""
+from swsn.schema_doc import load_schema, documented_correspondences, ground_truth_set
+
+schema = load_schema("../ground_truth/schema/olist.yaml")
+correspondences = documented_correspondences(schema)
+gt_pairs = ground_truth_set(
+    correspondences, "olist_orders_dataset", "olist_order_payments_dataset"
+)
+print("documented pairs for orders x payments:", sorted(gt_pairs))
+"""),
+    code("""
+from valentine.algorithms import ColumnPair
+from valentine.metrics import Precision, Recall, F1Score
+
+ground_truth = [ColumnPair("orders", a, "payments", b) for a, b in gt_pairs]
+for metric in (Precision(), Recall(), F1Score()):
+    print(metric.apply(matches, ground_truth))
+"""),
+    md("""
+The numbers look harsh because this table pair has **one** documented correspondence, so
+precision and recall are coarse: one wrong proposal among the candidates halves
+precision. The benchmark uses twelve pairs and reports by stratum for exactly this reason
+(`evaluation/protocol.yaml`). The default `one_to_one=True` applies Hungarian selection;
+pass `one_to_one=False` to score the raw proposal set instead.
+"""),
+    md("""
+## Register your own matcher
+
+Every matcher implements one method, `get_matches(source_input, target_input)`, and returns
+a dict of `ColumnPair` to score. The batch method has a default that calls `get_matches`
+over every pair of tables, so a two-table matcher needs nothing else. This one proposes a
+pair only when the two column names are identical — the simplest possible baseline.
+"""),
+    code("""
+from valentine.algorithms import BaseMatcher, ColumnPair
+
+class ExactNameMatcher(BaseMatcher):
+    \"\"\"Propose a pair only when the two column names are identical.\"\"\"
+
+    def get_matches(self, source_input, target_input):
+        pairs = {}
+        for source_column in source_input.get_columns():
+            for target_column in target_input.get_columns():
+                if source_column.name == target_column.name:
+                    pairs[
+                        ColumnPair(
+                            source_input.name, source_column.name,
+                            target_input.name, target_column.name,
+                        )
+                    ] = 1.0
+        return pairs
+
+exact = valentine_match(
+    [orders, payments], ExactNameMatcher(), df_names=["orders", "payments"]
+)
+print(f"{len(exact)} exact-name matches")
+for pair, score in exact.items():
+    print(pair.source_column, "->", pair.target_column, score)
+"""),
+    md("""
+## What this shows
+
+- Valentine's contract is small: implement `get_matches`, return `ColumnPair` scores.
+  Everything else — metrics, one-to-one selection, details — is provided by the library.
+- The extension differs from `ExactNameMatcher` only in how it computes the score:
+  COMA's name functions plus Jaccard over canonicalised value sets, with the two
+  components exposed in `match_details`.
+- A single table pair is not enough to judge a matcher; that is why the project evaluates
+  on twelve pairs, five corruption levels and per stratum.
+
+## Reproducing
+
+```bash
+make data     # the Olist CSVs
+make eda      # execute this notebook
+```
+"""),
+])
+
+
 def write_all() -> None:
     for name, nb in NOTEBOOKS.items():
         path = HERE / f"{name}.ipynb"
