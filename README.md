@@ -11,7 +11,7 @@ repository is the code base for Milestone 2 onward.
 | Milestone | Due | State |
 |---|---|---|
 | M2 — datasets, EDA, repo, report | 09.11.2026 | datasets triaged, ground truth transcribed, 600-run ladder benchmark, report drafted |
-| M3 — tools, preprocessing, Kanban | 16.11.2026 | Kanban and protocol frozen; `tool_rapidfuzz` notebook done; preprocessing implemented with a [reproducible demo](docs/extension.md#m3-preprocessing) |
+| M3 — tools, preprocessing, Kanban | 16.11.2026 | four tool notebooks, preprocessing with a [reproducible demo](docs/extension.md#m3-preprocessing), protocol frozen, Kanban seeded |
 | M4 — first results, novelty | 30.11.2026 | [first matcher results and ablations](docs/extension.md#m4-matcher-evaluation) |
 | M5 — second results, draft report | 14.12.2026 | not started |
 | M6 — final report, defence | 11–18.01.2027 | not started |
@@ -61,6 +61,21 @@ No Kaggle account or API token is needed: every source is a public Kaggle *Datas
 which downloads anonymously through `kagglehub`. If downloads are blocked, the README in
 `data/` explains how to place the CSVs manually (`make data OFFLINE=1`).
 
+## M3 submission
+
+| Item | Link |
+|---|---|
+| Repository | https://github.com/AER00/SWSN-project |
+| Tool selection and justification | [`docs/tools.md`](docs/tools.md) |
+| Introductory notebooks | [`tool_valentine`](notebooks/tool_valentine.ipynb), [`tool_kagglehub`](notebooks/tool_kagglehub.ipynb), [`tool_rapidfuzz`](notebooks/tool_rapidfuzz.ipynb), [`tool_pyyaml`](notebooks/tool_pyyaml.ipynb) |
+| Preprocessing | [`src/swsn/extension/canonicalise.py`](src/swsn/extension/canonicalise.py) with a before/after [demo](docs/extension.md#m3-preprocessing) on real Olist values |
+| Project management | https://github.com/users/AER00/projects/2 |
+| How to run | `make setup` then `make eda`; each notebook is also a standalone module. See the Quickstart above. |
+
+The four notebooks are generated from `notebooks/_build.py` and executed in place, so the
+committed outputs show that they run. The preprocessing artefact is the same code the
+extension uses in M4, not a separate demo script.
+
 ## Repository layout
 
 ```
@@ -94,7 +109,10 @@ attributed to their Kaggle publishers and are used under their respective licenc
 | `04_cross_table` | D8 name-similarity × value-overlap quadrants |
 | `05_probe_recovery` | how well Valentine recovers documented relationships |
 | `06_corruption_ladder` | how the matching signal degrades from L0 to L4 |
+| `tool_valentine` | M3 tool introduction: load two tables, run `Coma`, read `MatcherResults`, score against ground truth, register a custom `BaseMatcher` |
+| `tool_kagglehub` | M3 tool introduction: download a public dataset, cache behaviour, checksum verification |
 | `tool_rapidfuzz` | M3 tool introduction: `ratio` vs `token_sort_ratio` vs `token_set_ratio` on column names and category values, with the case-sensitivity and separator pitfalls |
+| `tool_pyyaml` | M3 tool introduction: load the registry, validate the ladder, fail loudly on a bad entry |
 
 ## Method in one paragraph
 
