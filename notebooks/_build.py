@@ -855,6 +855,82 @@ make eda      # execute this notebook
 ])
 
 
+NOTEBOOKS["tool_kagglehub"] = notebook("tool_kagglehub", [
+    md("""
+# kagglehub — introductory notebook
+
+M3 requires a minimal notebook per selected tool. This one covers **kagglehub**, the
+library the project uses to fetch public Kaggle Datasets without an account or API token.
+
+It shows three things: what a download returns, that repeated downloads hit the cache, and
+why the project checks a SHA-256 against the registry instead of trusting the download.
+"""),
+    code(SETUP),
+    md("""
+## Download a public dataset
+
+`dataset_download("<owner>/<slug>")` fetches the dataset and returns the local directory.
+The handle includes the version, so the same call is reproducible until the publisher
+uploads a new version. The dataset here is a 36 KB CSV from the project registry.
+"""),
+    code("""
+import kagglehub
+
+path = kagglehub.dataset_download("fedesoriano/heart-failure-prediction")
+print("path:", path)
+"""),
+    md("""
+## Files and cache behaviour
+
+The returned path lives inside kagglehub's cache. Calling the same handle again does not
+re-download: it resolves to the same directory, which is what makes repeated notebook runs
+cheap and offline runs possible once the cache is warm.
+"""),
+    code("""
+from pathlib import Path
+
+second = kagglehub.dataset_download("fedesoriano/heart-failure-prediction")
+print("same directory:", Path(path) == Path(second))
+print("cache root   :", kagglehub.cache.get_cache_folder())
+print("files        :", sorted(p.name for p in Path(path).iterdir()))
+"""),
+    md("""
+## Verify a checksum
+
+A cache hit proves the bytes did not change locally; it does not prove they are the bytes
+the project pinned. `data/datasets.yaml` records a SHA-256 per file, and the project
+verifies it before using the data — a silent dataset update changes the evaluation set,
+which would make every result incomparable to the last one.
+"""),
+    code("""
+from swsn.registry import load_registry, sha256_file
+
+registry = load_registry("../data/datasets.yaml")
+dataset = registry.datasets["heart_failure"]
+actual = sha256_file(Path(path) / "heart.csv")
+print("registry :", dataset.sha256["heart.csv"])
+print("actual   :", actual)
+print("match    :", actual == dataset.sha256["heart.csv"])
+"""),
+    md("""
+## Relation to the project's download step
+
+`make data` calls `swsn.download`, which uses kagglehub and then copies and verifies the
+files into `data/raw/<dataset>/` so that every loader reads one layout. `make data
+OFFLINE=1` skips the network and only verifies what is already on disk. kagglehub's cache
+is an implementation detail; the registry and the checksum are the contract.
+
+## Reproducing
+
+```bash
+make setup
+# execute this notebook (needs network on a cold cache)
+make eda
+```
+"""),
+])
+
+
 def write_all() -> None:
     for name, nb in NOTEBOOKS.items():
         path = HERE / f"{name}.ipynb"
