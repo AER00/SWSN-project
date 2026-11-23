@@ -108,8 +108,7 @@ def build():
     for draw, title, filename in charts:
         fig = page("Olist and Instacart · 12 documented table pairs", title)
         draw(fig, cumulative, attribution)
-        for suffix in ("pdf", "svg"):
-            fig.savefig(figures / f"{filename}.{suffix}")
+        fig.savefig(figures / f"{filename}.svg")
         plt.close(fig)
 
 

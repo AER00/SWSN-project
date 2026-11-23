@@ -15,7 +15,7 @@ This is our SWSN 2026/27 course project. We use [Olist](https://www.kaggle.com/d
 
 - [Presentation (PowerPoint)](reports/Valentine_M4_deck.pptx)
 - [First results and how to reproduce them](docs/extension.md#m4-matcher-evaluation)
-- [Matcher comparison](reports/figures/m4_recovery.pdf) and [numeric normalisation ablation](reports/figures/m4_numeric_ablation.pdf)
+- [Matcher comparison](reports/figures/m4_recovery.svg) and [numeric normalisation ablation](reports/figures/m4_numeric_ablation.svg)
 - [Implementation](src/swsn/extension), [benchmark results](evaluation/m4), and [M4 Kanban tasks](https://github.com/AER00/SWSN-project/milestone/2)
 
 ## Run the notebooks
