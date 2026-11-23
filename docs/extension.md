@@ -52,6 +52,7 @@ PY
 ```bash
 uv run python -m swsn.download --only olist instacart
 uv run python -m swsn.run_benchmark --extension --datasets olist instacart
+uv run python -m swsn.m4_report
 ```
 
 `--extension` reads the baselines and four leave-one-out ablations from the
@@ -59,6 +60,11 @@ uv run python -m swsn.run_benchmark --extension --datasets olist instacart
 and `results_cumulative.csv` under `evaluation/m4/`, without overwriting M2.
 Each CSV has 420 successful runs: 12 documented pairs x 5 levels x 7 matchers.
 Attribution applies each level in isolation; cumulative mode stacks the levels.
+The report command reads both CSVs and rebuilds the vector figures.
+
+- [M4 presentation](../reports/Valentine_M4_deck.pptx)
+- [Matcher comparison](../reports/figures/m4_recovery.svg)
+- [Numeric and unit normalisation ablation](../reports/figures/m4_numeric_ablation.svg)
 
 Cumulative Recovery@1 (mean over pairs, 22 November 2026):
 
@@ -72,18 +78,41 @@ Cumulative Recovery@1 (mean over pairs, 22 November 2026):
 | Without numbers/units | .931 | .569 | .431 | .431 | .458 |
 | Without sentinels/nulls | .931 | .569 | .514 | .514 | .542 |
 
-The full extension beats these two baselines on cumulative L2/L3, but not both
-at every level. The numeric ablation changes Recovery@1 for Instacart
-`products`/`aisles` at L2-L4; the text ablation changes it for Olist
-customers/sellers at L4 only. No ablation changes attribution Recovery@1.
-Dates and null normalisation show no measured benefit on this grid. The sole
-annotated S3 correspondence has Recovery@1 of zero across all variants and
-levels in both modes. Recovery@3 is degenerate on three of the twelve pairs.
+With cumulative format noise (L2 and L3), NormalisedComa leads COMA by 2.8
+percentage points and Jaccard by 11.1 on mean Recovery@1 across table pairs.
+Turning off numeric and unit cleanup reduces the L2 mean by 8.3 points. This
+change comes from the Instacart `products`/`aisles` pair. Turning off text cleanup
+changes the Olist customers/sellers pair at L4 only. The date and null ablations
+give the same Recovery@1 across this grid. In attribution mode, all four
+ablations give the same Recovery@1 as the full extension.
 
-The extension uses COMA's flat-schema name scores, Jaccard on canonical value
-sets, a 50/50 blend and a per-pair median threshold on positive scores. Its
-comparison with COMA therefore does not isolate preprocessing; leave-one-out
-comparisons isolate individual steps within the extension. L4 is a semantic
-negative control, not evidence that the method repairs changed meaning. These
-are first results under the provisional protocol, not a claim of general
-superiority or formal novelty.
+### Recovery by match type at cumulative L2
+
+The cells count documented matches ranked first across all pairs. The ladder
+figure gives each table pair equal weight, so a one-match pair can have a larger
+effect per match than a pair with several matches.
+
+| Matcher | S1 similar names | S2 different names | S3 format or grain | Total |
+|---|---:|---:|---:|---:|
+| Valentine COMA | 5/11 | 4/6 | 0/1 | 9/18 |
+| Valentine Jaccard | 4/11 | 4/6 | 0/1 | 8/18 |
+| NormalisedComa | 6/11 | 2/6 | 0/1 | 8/18 |
+
+### Comparison with the COMA paper
+
+Do and Rahm’s COMA combines multiple schema matchers and explores reuse of
+earlier matches. We apply that idea of combining signals to flat Kaggle tables.
+NormalisedComa keeps the flat column-name score and blends it 50/50 with
+Jaccard overlap on canonical value sets. It keeps candidates at or above the
+median positive score for each pair. Explicit cleanup rules let us inspect what
+changes and switch off individual rules. The measured baseline is the installed
+Valentine COMA with instance matching enabled. [Do and Rahm, VLDB 2002](https://www.vldb.org/conf/2002/S17P03.pdf) ·
+[Koutras et al., ICDE 2021](https://arxiv.org/abs/2010.07386)
+
+The COMA comparison changes value scoring and candidate selection as well as
+preprocessing. The ablations measure what happens when one cleanup step is
+removed from the extension. L4 is a semantic negative control. The evaluation
+uses two datasets and one seed under the checked-in provisional protocol.
+The only S3 match was missed at every level in both modes, and Recovery@3 is
+degenerate on three pairs. These results support a narrow claim about format
+cleanup on this benchmark.

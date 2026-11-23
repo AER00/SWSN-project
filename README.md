@@ -11,6 +11,13 @@ This is our SWSN 2026/27 course project. We use [Olist](https://www.kaggle.com/d
 - [Preprocessing demo](docs/extension.md#m3-preprocessing) shows what changes before and after normalisation using Olist values. The [preprocessing code](src/swsn/extension/canonicalise.py) handles missing-value markers, date formats, numbers and unit labels, and text formatting.
 - [Kanban board](https://github.com/users/AER00/projects/2/views/1) and [M3 issues](https://github.com/AER00/SWSN-project/milestone/1) show who took each task and its target date. The course brief lists 16 November and the GitHub milestone lists 23 November.
 
+## Milestone 4 submission
+
+- [Presentation (PowerPoint)](reports/Valentine_M4_deck.pptx)
+- [First results and how to reproduce them](docs/extension.md#m4-matcher-evaluation)
+- [Matcher comparison](reports/figures/m4_recovery.pdf) and [numeric normalisation ablation](reports/figures/m4_numeric_ablation.pdf)
+- [Implementation](src/swsn/extension), [benchmark results](evaluation/m4), and [M4 Kanban tasks](https://github.com/AER00/SWSN-project/milestone/2)
+
 ## Run the notebooks
 
 Install [uv](https://docs.astral.sh/uv/) and Make, then run these commands from the repository root. The setup uses Python 3.13 and fetches the language data that Valentine needs. The Valentine notebook uses Olist, while the kagglehub notebook downloads a small public dataset and checks it against the version and checksum in our registry.
